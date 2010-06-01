@@ -1,3 +1,4 @@
+/* { dg-skip-if "no DImode vector" { "m6809-*-*" } { "*" } { "" } } */
 #define vector64 __attribute__((vector_size(8)))
 
 main(){

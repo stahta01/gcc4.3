@@ -327,6 +327,9 @@ hppa*-*-* | parisc*-*-*)
 m32r*-*-*)
         cpu_type=m32r
         ;;
+m6809-*-*)
+   cpu_type=m6809
+	;;
 m680[012]0-*-*)
 	cpu_type=m68k
 	extra_headers=math-68881.h
@@ -1510,6 +1513,15 @@ m32rle-*-linux*)
 	if test x$enable_threads = xyes; then
 		thread_file='posix'
 	fi
+	;;
+m6809-coco-*)
+	tmake_file="${tmake_file} m6809/t-m6809 m6809/t-coco"
+	;;
+m6809-sim-*)
+	tmake_file="${tmake_file} m6809/t-m6809 m6809/t-sim"
+	;;
+m6809-*-*)
+	tmake_file="${tmake_file} m6809/t-m6809"
 	;;
 # m68hc11 and m68hc12 share the same machine description.
 m68hc11-*-*|m6811-*-*)

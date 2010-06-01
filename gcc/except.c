@@ -3742,6 +3742,7 @@ output_function_exception_table (const char * ARG_UNUSED (fnname))
 		       * tt_format_size));
 
       disp = after_disp;
+#if BIGGEST_ALIGNMENT/BITS_PER_UNIT > 1
       do
 	{
 	  unsigned int disp_size, pad;
@@ -3756,6 +3757,7 @@ output_function_exception_table (const char * ARG_UNUSED (fnname))
 	  disp = after_disp + pad;
 	}
       while (disp != last_disp);
+#endif
 
       dw2_asm_output_data_uleb128 (disp, "@TType base offset");
 #endif
@@ -3797,8 +3799,10 @@ output_function_exception_table (const char * ARG_UNUSED (fnname))
     dw2_asm_output_data (1, VARRAY_UCHAR (cfun->eh->action_record_data, i),
 			 (i ? NULL : "Action record table"));
 
+#if BIGGEST_ALIGNMENT/BITS_PER_UNIT > 1
   if (have_tt_data)
     assemble_align (tt_format_size * BITS_PER_UNIT);
+#endif
 
   i = VEC_length (tree, cfun->eh->ttype_data);
   while (i-- > 0)

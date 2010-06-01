@@ -61,78 +61,78 @@ main ()
     abort ();
   if (feq (-1LL) != FALSE)
     abort ();
-  if (feq (0x8000000000000000LL) != FALSE)
+  if (feq (0x80000000LL) != FALSE)
     abort ();
-  if (feq (0x8000000000000001LL) != FALSE)
+  if (feq (0x80000001LL) != FALSE)
     abort ();
   if (feq (1LL) != FALSE)
     abort ();
-  if (feq (0x7fffffffffffffffLL) != FALSE)
+  if (feq (0x7fffffffLL) != FALSE)
     abort ();
 
   if (fne (0LL) != FALSE)
     abort ();
   if (fne (-1LL) != TRUE)
     abort ();
-  if (fne (0x8000000000000000LL) != TRUE)
+  if (fne (0x80000000LL) != TRUE)
     abort ();
-  if (fne (0x8000000000000001LL) != TRUE)
+  if (fne (0x80000001LL) != TRUE)
     abort ();
   if (fne (1LL) != TRUE)
     abort ();
-  if (fne (0x7fffffffffffffffLL) != TRUE)
+  if (fne (0x7fffffffLL) != TRUE)
     abort ();
 
   if (flt (0LL) != FALSE)
     abort ();
   if (flt (-1LL) != TRUE)
     abort ();
-  if (flt (0x8000000000000000LL) != TRUE)
+  if (flt (0x80000000LL) != TRUE)
     abort ();
-  if (flt (0x8000000000000001LL) != TRUE)
+  if (flt (0x80000001LL) != TRUE)
     abort ();
   if (flt (1LL) != FALSE)
     abort ();
-  if (flt (0x7fffffffffffffffLL) != FALSE)
+  if (flt (0x7fffffffLL) != FALSE)
     abort ();
 
   if (fge (0LL) != TRUE)
     abort ();
   if (fge (-1LL) != FALSE)
     abort ();
-  if (fge (0x8000000000000000LL) != FALSE)
+  if (fge (0x80000000LL) != FALSE)
     abort ();
-  if (fge (0x8000000000000001LL) != FALSE)
+  if (fge (0x80000001LL) != FALSE)
     abort ();
   if (fge (1LL) != TRUE)
     abort ();
-  if (fge (0x7fffffffffffffffLL) != TRUE)
+  if (fge (0x7fffffffLL) != TRUE)
     abort ();
 
   if (fgt (0LL) != FALSE)
     abort ();
   if (fgt (-1LL) != FALSE)
     abort ();
-  if (fgt (0x8000000000000000LL) != FALSE)
+  if (fgt (0x80000000LL) != FALSE)
     abort ();
-  if (fgt (0x8000000000000001LL) != FALSE)
+  if (fgt (0x80000001LL) != FALSE)
     abort ();
   if (fgt (1LL) != TRUE)
     abort ();
-  if (fgt (0x7fffffffffffffffLL) != TRUE)
+  if (fgt (0x7fffffffLL) != TRUE)
     abort ();
 
   if (fle (0LL) != TRUE)
     abort ();
   if (fle (-1LL) != TRUE)
     abort ();
-  if (fle (0x8000000000000000LL) != TRUE)
+  if (fle (0x80000000LL) != TRUE)
     abort ();
-  if (fle (0x8000000000000001LL) != TRUE)
+  if (fle (0x80000001LL) != TRUE)
     abort ();
   if (fle (1LL) != FALSE)
     abort ();
-  if (fle (0x7fffffffffffffffLL) != FALSE)
+  if (fle (0x7fffffffLL) != FALSE)
     abort ();
 
   exit (0);
