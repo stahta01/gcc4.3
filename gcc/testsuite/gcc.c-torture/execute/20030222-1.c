@@ -1,3 +1,4 @@
+/* { dg-skip-if "no 32-bit regs" { "m6809-*-*" } { "*" } { "" } } */
 /* Verify that we get the low part of the long long as an int.  We
    used to get it wrong on big-endian machines, if register allocation
    succeeded at all.  We use volatile to make sure the long long is

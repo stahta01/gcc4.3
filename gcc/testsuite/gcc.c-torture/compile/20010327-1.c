@@ -1,4 +1,4 @@
-/* { dg-skip-if "non-SI pointers" { m32c-*-* } { "*" } { "" } } */
+/* { dg-skip-if "non-SI pointers" { m6809-*-* m6811-*-* m32c-*-* } { "*" } { "" } } */
 
 /* This testcase tests whether GCC can produce static initialized data
    that references addresses of size 'unsigned long', even if that's not

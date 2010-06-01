@@ -1,3 +1,4 @@
+/* { dg-xfail-if "int not 32-bit" { "m6809-*-*" } { "*" } { "" } } */
 typedef unsigned long long ULL;
 ULL back;
 ULL hpart, lpart;

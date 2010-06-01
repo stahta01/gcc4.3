@@ -1,3 +1,4 @@
+/* { dg-xfail-if "no 64-bit long long" { m6809-*-* } { "*" } { "" } } */
 int foo( unsigned long long aLL )
 {
     switch( aLL )

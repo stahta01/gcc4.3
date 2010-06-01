@@ -1,6 +1,10 @@
 #include <stdarg.h>
 
+#ifdef __m6809__
+#define VALUE 0x12345678LL
+#else
 #define VALUE 0x123456789abcdefLL
+#endif
 #define AFTER 0x55
 
 void
