@@ -56,7 +56,11 @@ typedef unsigned _Unwind_Internal_Ptr __attribute__((__mode__(__pointer__)));
    consumer of an exception.  We'll go along with this for now even on
    32-bit machines.  We'll need to provide some other option for
    16-bit machines and for machines with > 8 bits per byte.  */
+#ifdef __UINT64_TYPE__
 typedef unsigned _Unwind_Exception_Class __attribute__((__mode__(__DI__)));
+#else
+typedef char _Unwind_Exception_Class[8];
+#endif
 
 /* The unwind interface uses reason codes in several contexts to
    identify the reasons for failures or other actions.  */
