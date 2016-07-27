@@ -118,6 +118,9 @@ register and not a fake one that is emulated in software. */
 #undef TARGET_FUNCTION_OK_FOR_SIBCALL
 #define TARGET_FUNCTION_OK_FOR_SIBCALL m6809_function_ok_for_sibcall
 
+#undef TARGET_ALLOCATE_STACK_SLOTS_FOR_ARGS
+#define TARGET_ALLOCATE_STACK_SLOTS_FOR_ARGS m6809_allocate_stack_slots_for_args
+
 /* External variables used */
 extern int reload_completed;   /* set in toplev.c */
 extern FILE *asm_out_file;
@@ -2144,6 +2147,14 @@ m6809_asm_file_start (void)
   }
 
   fprintf (asm_out_file, "\n");
+}
+
+
+/* Naked functions should not allocate stack slots for arguments. */
+bool
+m6809_allocate_stack_slots_for_args (void)
+{
+	return !m6809_current_function_has_type_attr_p ("naked");
 }
 
 
