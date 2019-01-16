@@ -106,11 +106,19 @@ long long args[] =
   0LL,
   1LL,
   -1LL,
+#ifdef __m6809__
+  0x7fffffffLL,
+  0x80000000LL,
+  0x80000001LL,
+  0x1A3F2375LL,
+  0x93850E94LL
+#else
   0x7fffffffffffffffLL,
   0x8000000000000000LL,
   0x8000000000000001LL,
   0x1A3F237394D36C58LL,
   0x93850E92CAAC1B04LL
+#endif
 };
 
 int correct_results[] =

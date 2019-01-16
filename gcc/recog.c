@@ -2974,6 +2974,11 @@ peephole2_optimize (void)
 	      df_simulate_one_insn_backwards (bb, insn, live);
 	      COPY_REG_SET (peep2_insn_data[peep2_current].live_before, live);
 
+	/* This check was added in GCC 4.1.0 and above.  It works around problems
+	on mainstream platforms with stack unwinding (exceptions), but is not
+	needed for the 6809.  It is taken out for the 6809 builds in order to
+	optimize better. */
+#ifndef HAVE_m6809_sync
 	      if (RTX_FRAME_RELATED_P (insn))
 		{
 		  /* If an insn has RTX_FRAME_RELATED_P set, peephole
@@ -2983,6 +2988,7 @@ peephole2_optimize (void)
 		  try = NULL;
 		}
 	      else
+#endif
 		/* Match the peephole.  */
 		try = peephole2_insns (PATTERN (insn), insn, &match_len);
 

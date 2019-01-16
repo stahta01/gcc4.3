@@ -47,7 +47,11 @@ namespace __cxxabiv1
 #define _GLIBCXX_GUARD_BIT __guard_test_bit (0, 1)
 #define _GLIBCXX_GUARD_PENDING_BIT __guard_test_bit (1, 1)
 #define _GLIBCXX_GUARD_WAITING_BIT __guard_test_bit (2, 1)
+#ifndef __UINT64_TYPE__
+  typedef char __guard[8];
+#else
   __extension__ typedef int __guard __attribute__((mode (__DI__)));
+#endif
 
   // __cxa_vec_ctor has void return type.
   typedef void __cxa_vec_ctor_return_type;

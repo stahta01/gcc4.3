@@ -1,3 +1,4 @@
+/* { dg-xfail-if "ulong not 64-bit" { "m6809-*-*" } { "*" } { "" } } */
 #include <limits.h>
 
 #if ULONG_LONG_MAX != 18446744073709551615ull && ULONG_MAX != 18446744073709551615ull

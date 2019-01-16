@@ -87,8 +87,10 @@ size_of_encoded_value (unsigned char encoding)
       return 2;
     case DW_EH_PE_udata4:
       return 4;
+#ifdef __UINT64_TYPE__
     case DW_EH_PE_udata8:
       return 8;
+#endif
     }
   __gxx_abort ();
 }
@@ -191,10 +193,14 @@ read_encoded_value_with_base (unsigned char encoding, _Unwind_Ptr base,
       void *ptr;
       unsigned u2 __attribute__ ((mode (HI)));
       unsigned u4 __attribute__ ((mode (SI)));
+#ifdef __UINT64_TYPE__
       unsigned u8 __attribute__ ((mode (DI)));
+#endif
       signed s2 __attribute__ ((mode (HI)));
       signed s4 __attribute__ ((mode (SI)));
+#ifdef __INT64_TYPE__
       signed s8 __attribute__ ((mode (DI)));
+#endif
     } __attribute__((__packed__));
 
   const union unaligned *u = (const union unaligned *) p;
@@ -240,10 +246,12 @@ read_encoded_value_with_base (unsigned char encoding, _Unwind_Ptr base,
 	  result = u->u4;
 	  p += 4;
 	  break;
+#ifdef __UINT64_TYPE__
 	case DW_EH_PE_udata8:
 	  result = u->u8;
 	  p += 8;
 	  break;
+#endif
 
 	case DW_EH_PE_sdata2:
 	  result = u->s2;
@@ -253,10 +261,12 @@ read_encoded_value_with_base (unsigned char encoding, _Unwind_Ptr base,
 	  result = u->s4;
 	  p += 4;
 	  break;
+#ifdef __INT64_TYPE__
 	case DW_EH_PE_sdata8:
 	  result = u->s8;
 	  p += 8;
 	  break;
+#endif
 
 	default:
 	  __gxx_abort ();

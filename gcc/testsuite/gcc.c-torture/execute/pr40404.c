@@ -1,6 +1,10 @@
 extern void abort (void);
 struct S {
+#ifdef __m6809__
+  unsigned long ui17 : 17;
+#else
   unsigned int ui17 : 17;
+#endif
 } s;
 int main()
 {

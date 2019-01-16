@@ -444,6 +444,11 @@ UDItype __umulsidi3 (USItype, USItype);
 	   : "cbit")
 #endif /* __M32R__ */
 
+#if defined (__m6309__) || defined (__m6809__)
+#define count_leading_zeros(COUNT,X)	((COUNT) = __builtin_clz (X))
+#define count_trailing_zeros(COUNT,X)	((COUNT) = __builtin_ctz (X))
+#endif
+
 #if defined (__mc68000__) && W_TYPE_SIZE == 32
 #define add_ssaaaa(sh, sl, ah, al, bh, bl) \
   __asm__ ("add%.l %5,%1\n\taddx%.l %3,%0"				\

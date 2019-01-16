@@ -1,4 +1,5 @@
 /* PR target/49186 */
+/* { dg-skip-if "16-bit int" { "m6809-*-*" } { "" } { "" } } */
 extern void abort (void);
 
 int

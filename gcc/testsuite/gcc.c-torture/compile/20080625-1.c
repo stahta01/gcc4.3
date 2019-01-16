@@ -1,3 +1,4 @@
+/* { dg-skip-if "" { m6809-*-* } { "*" } { "" } } */
 struct peakbufStruct {
     unsigned int lnum [5000];
     int lscan [5000][4000];
