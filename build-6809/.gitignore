@@ -1,0 +1,9 @@
+m6809-*
+tests/*.s
+tests/*.i
+tests/*.lst
+tests/*.map
+tests/*.c.*
+testsuite/*.s
+testsuite/*.i
+testsuite/*.map

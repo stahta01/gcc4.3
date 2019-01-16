@@ -1,0 +1,304 @@
+#!/bin/bash
+#
+# run - run GCC 6809 regression test.  This script runs selected
+# testcases that have been known to fail.  This is a faster way of
+# testing changes, rather than rerunning the whole testsuite.
+#
+# use the -h option for more help.
+#
+
+typeset -i compile_pass
+typeset -i compile_fail
+typeset -i compile_segfaults
+typeset -i compile_ice
+typeset -i link_pass
+typeset -i link_fail
+typeset -i exec_pass
+typeset -i exec_fail
+typeset -i skips
+
+compile_pass=0
+compile_fail=0
+compile_segfaults=0
+compile_ice=0
+link_pass=0
+link_fail=0
+exec_pass=0
+exec_fail=0
+skips=0
+save_errors=0
+
+cc=m6809-unknown-none-gcc
+base=`pwd`/../../gcc/testsuite
+sim="m6809-run -C -t"
+tmpfile=/tmp/gcc6809regress
+testlist=/tmp/gcc6809testlist
+cflags="-save-temps -w -DSTACK_SIZE=1024 -fno-show-column"
+
+if [ -z "$EDITOR" ]; then
+EDITOR=vi
+fi
+
+init_error_dir () {
+	echo "Saving all errors" && rm -rf errors; mkdir -p errors
+}
+
+invalid_source () {
+	local rc;
+	rc=1
+	if [ "$allow_invalid" = "1" ]; then return 1; fi
+	if [ "$1" = "gcc.c-torture/compile/20000804-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/20001205-1.c" ]; then rc=0; fi
+ 	if [ "$1" = "gcc.c-torture/compile/20001226-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/20020312-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/20020604-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/920501-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/920501-4.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/920520-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/961203-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/980506-1.c" ]; then rc=0; fi
+
+	# Test uses "long long"
+	if [ "$1" = "gcc.c-torture/execute/20000717-2.c" ]; then rc=0; fi
+
+	if [ "$1" = "gcc.c-torture/compile/20010327-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/20011205-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/20031023-4.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/20050113-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/simd-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/simd-2.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/simd-4.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/simd-5.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/simd-6.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/execute/20030222-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/execute/20040331-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/execute/991118-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/execute/bf-sign-2.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/execute/bf64-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/execute/simd-1.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/execute/simd-4.c" ]; then rc=0; fi
+
+   # New tests in GCC 4.x:
+	if [ "$1" = "gcc.c-torture/compile/limits-caselabels.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/limits-declparen.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/limits-externalid.c" ]; then rc=0; fi
+	if [ "$1" = "gcc.c-torture/compile/limits-pointer.c" ]; then rc=0; fi
+
+	if [ "$rc" = "0" ]; then
+		echo "Skipping invalid test '$src'"
+		skips=$skips+1
+	fi
+
+	return $rc;
+}
+
+check_compile_error () {
+	if [ "$1" != "0" ]; then
+		compile_fail=$compile_fail+1
+	else
+		compile_pass=$compile_pass+1
+	fi
+}
+
+check_link_error () {
+	if [ "$1" != "0" ]; then
+		link_fail=$link_fail+1
+	else
+		link_pass=$link_pass+1
+	fi
+}
+
+check_run_error () {
+	if [ "$1" != "0" ]; then
+		exec_fail=$exec_fail+1
+	else
+		exec_pass=$exec_pass+1
+	fi
+}
+
+
+result () {
+	# $1 = Phase name = Compiling,Executing,Running
+	# $2 = Result code
+
+	# On success, don't print anything
+	#if [ "$2" = "0" ]; then return; fi
+
+	if [ "$2" = "0" ]; then rcstring="PASS"; else rcstring="FAIL"; fi
+	echo "$1 $src ($cflags $options)... $rcstring"
+	cat $tmpfile
+}
+
+
+compile () {
+	src=$1; shift; options=$@
+
+	if invalid_source $src; then return 0; fi
+	if [ "$gdb" != "y" ]; then
+		$cc -o tmp.o $cflags $options -c $base/$src > $tmpfile 2>&1
+	else
+		gdbcmd=`$cc -### -o tmp.o $cflags $options -c $base/$src 2>&1 | grep cc1.*dumpbase | sed -e "s/\"//g" | grep -- -quiet`
+		echo "Compiling $src ($options)... under gdb '($gdbcmd)':"
+		gdb $gdbargs --args $gdbcmd
+		echo ""
+		return 0
+	fi
+	rc=$?;  check_compile_error $rc; result "Compiling" $rc
+
+	grep "Segmentation fault" $tmpfile >/dev/null 2>&1
+	if [ "$?" = "0" ]; then
+		gdb="y"
+		compile_segfaults=$compile_segfaults+1
+		compile $src $@
+		gdb=""
+		return 1
+	fi
+
+	grep "internal compiler error" $tmpfile >/dev/null 2>&1
+	if [ "$?" = "0" ]; then
+		gdb="y"
+		compile_ice=$compile_ice+1
+		compile $src $@
+		gdb=""
+	fi
+
+	return $rc
+}
+
+link1 () {
+	compile $@
+	if [ "$rc" != "0" ]; then return $rc; fi
+
+	src=$1; shift; options=$@
+	if invalid_source $src; then return 0; fi
+
+	$cc -o tmp -Wl,--map tmp.o > $tmpfile 2>&1
+	rc=$?; check_link_error $rc; result "Linking" $rc
+}
+
+
+execute () {
+	link1 $@
+	if [ "$rc" != "0" ]; then return $rc; fi
+
+	src=$1; shift; options=$@
+	if invalid_source $src; then return 0; fi
+
+	$sim tmp > $tmpfile 2>&1
+	rc=$?; check_run_error $rc; result "Running" $rc
+
+	if [ "$rc" != "0" ]; then
+		if [ "$debug_run" = "y" ]; then
+			$sim -d -T tmp
+		fi
+
+		if [ "$save_errors" = "1" ]; then
+			echo "Rerunning to capture output..."
+			$cc -save-temps $cflags $options -c $base/$src > $tmpfile 2>&1
+			srcbase=`basename $base/$src`
+			if [ -f ${srcbase%\.c}.s ]; then
+				echo "Assembler captured OK."
+				mv ${srcbase%\.c}.s errors
+			fi
+		fi
+	fi
+
+	return $rc
+}
+
+
+start () {
+	date
+}
+
+finish () {
+	date
+	echo "Compile errors: $compile_fail"
+	echo "   Segmentation faults - $compile_segfaults"
+	echo "   ICEs                - $compile_ice"
+	echo "Link errors:    $link_fail"
+	echo "Exec errors:    $exec_fail"
+	echo "Skips:          $skips"
+}
+
+
+
+while [ "$1" != "" ]; do
+	arg=$1; shift
+	case $arg in
+		-h)
+			echo "Options:"
+			echo "-c <test>         Compile only the selected test"
+			echo "-e <test>         Compile and execute only the selected test"
+			echo "--edit <test>     Look at a test's source code"
+			echo "--trunk           Use GCC version 4 (trunk)"
+			echo "-d                Enable gdb debugging"
+			echo "--failed <file>   Run all tests that failed in given logfile"
+			echo "Other flags can be given to affect the compiler options used."
+			echo "Specify compiler flags first on the command-line."
+			exit 0
+			;;
+		-c|--compile)
+			gdbargs=-n
+			compile $1; shift
+			exit 0
+			;;
+		-e|--execute)
+			execute $1; shift
+			exit 0
+			;;
+      --local)
+		   cc=../m6809-unknown-none/gcc/xgcc
+			cflags="-B ../m6809-unknown-none/gcc ${cflags}"
+			;;
+		--here)
+			base="."
+			;;
+		-v)
+			ver=$1; shift
+			cc=m6809-unknown-none-gcc-${ver}
+			# cc=m6809-gcc-${ver}
+			;;
+		--edit)
+			$EDITOR $base/$1; shift
+			exit 0
+			;;
+		--debug-run)
+			debug_run="y"
+			;;
+		-d|--debug)
+			gdb="y"
+			;;
+		--save-errors)
+			save_errors=1
+			init_error_dir
+			;;
+		--invalid)
+			allow_invalid=1
+			;;
+		-f|--failed)
+			logfile=$1; shift
+			start
+
+			grep "^FAIL:.*compile\/" $logfile | \
+				sed -e "s/^FAIL:/compile /" \
+				-e "s/([^)]*)//" > $testlist
+
+			grep "^FAIL:.*compilation," $logfile | \
+				sed -e "s/^FAIL:/compile /" -e "s/compilation,//" \
+				-e "s/([^)]*)//" >> $testlist
+
+			grep "^FAIL:.*execution," $logfile | \
+				sed -e "s/^FAIL:/execute /" -e "s/execution,//" \
+				-e "s/([^)]*)//" >> $testlist
+
+			{ while read line; do $line; done } < $testlist
+			finish
+			exit 0
+			;;
+		*)
+			cflags=`echo $cflags $arg`
+			;;
+	esac
+done
+

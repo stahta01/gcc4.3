@@ -1,0 +1,284 @@
+# vim: set filetype=:
+
+@deftitle GCC6809 - C compiler for the 6809 processor
+
+#### @firsts
+
+=Introduction
+
+GCC6809 is a port of the free GCC C compiler to the 6809 processor.  It
+has been tested on Linux and Cygwin, and is probably portable to other
+UNIX-like environments as well.
+
+The current release of GCC6809 is based on GCC 3.4.6.  Work is underway
+to port it to the GCC mainline.
+
+GCC6809 development is done in my spare time.  Contributions,
+questions, and bug reports are welcome.  Send them all to
+<^brian@oddchange.com^>.  Do not send questions to the normal GCC
+people as they will be unable to help you.
+
+For the latest information, check out my <a href="/main/?cat=19">GCC 6809 blog</a>.
+
+
+=News
+
+!July 31, 2007
+The <a href="/main/?cat=19">GCC 6809 blog</a> is unveiled.  Not much here yet
+but this seems a good way to get out more information as time goes on.
+
+
+!June 10, 2007
+A new stable version of gcc 3.4.6 for the 6809 has been tagged in
+Subversion.  The repository path is <i>gcc6809/tags/2007-06-10</i>.
+
+In addition, the <i>branches/gcc4.1</i> version of the compiler
+has been updated so that it works with the latest, mainline version
+of GCC (what will become GCC 4.3.0).  Although it appears to work fine
+and has passed most of the GCC testcases, it is still not considered
+ready for primetime yet.
+
+See the <b>Status</b> section below for an overview of the changes.
+
+
+!May 31, 2007
+I've started making some serious updates to GCC lately.  A new stable
+version should be posted within the next week or so.
+
+
+!May 5, 2007
+Changes to the build procedure have been committed.  gcc6809 did not
+build cleanly for many people; hopefully all of these issues are now
+resolved.  In particular, 'make everything' should now do everything
+necessary to build a working toolchain from scratch.  Revision 1502
+in the Subversion repository should now be used.
+
+
+!January 1, 2007
+Test results for the GCC 3.4.6 branch (on the trunk) have been updated.
+This corresponds to revision 1333 in the Subversion repository.
+This release is recommended for general use.  This is a minor update
+from the previous stable version (revision 1150).
+
+
+=About
+
+GCC6809 provides several different components that are necessary in
+order to convert C language source code into 6809 machine language.
+
+The C compiler itself was modified to generate 6809 assembly language.
+GCC is designed to support multiple "backends", and has been ported
+onto a wide variety of different architectures, such as x86, PowerPC,
+MIPS, Sparc, etc.
+
+GCC itself only generates assembly language.  It relies on separate
+tools to convert this into a final program.  On most GNU systems,
+this is provided by a set of programs called "binutils".  GNU binutils
+does not support the 6809, so a third-party package called the ASXXXX
+Cross Assemblers is being used instead.  Scripts are used to map between
+the standard binutils command-line options and the ASXXXX syntax.
+
+Although the 6809 is not in mainstream use, there are still instances
+of designs based around it.  Historically, the 6809 was an important
+processor whose design influenced later processors and which was
+used in many different applications.
+
+
+=Features
+
+GCC6809 goes beyond just a simple port to the processor; it provides
+features that embedded 6809 developers require to get the job done:
+
+* Utilizes most of the 6809 instruction set, including all
+addressing modes and optimal branch instruction selection
+* Builtin functions for accessing special 6809 instructions that aren't
+exposed through normal C, such as &&daa and &&sync.
+* Extension for declaring interrupt handlers
+* Extensions for forcing code/data into different output sections/banks.
+* Optional support for 8-bit "int" for tiny applications
+
+
+=History
+
+GCC6809 has a long history that dates back to the early 1990's.
+Various people have contributed to the 6809 backend, but it has never
+been officially accepted into the main GCC distribution.
+
+In 2005, I began creating a free operating system for pinball machines
+based on the 6809.  It was originally developed in assembly language
+with elaborate macros, but this quickly became unmanageable and I
+looked for something better.  I found all of the various 6809 bits
+that were floating around the 'net, began updating them to the latest
+GCC versions, fixing bugs, and improving performance.  The result is
+what you see today.
+
+
+=Status
+
+GCC6809 is frequently tested by running the standard GCC testsuite.
+There are also some handcrafted tests that I wrote to test 6809-specific
+features.
+
+The latest available testsuite runs are summarized below:
+
+!Stable Test Results (last updated exec stat -L stable-test | grep Modify | awk '{print $2}' cexe)
+* exec grep -c "^PASS:" stable-test cexe tests pass
+* exec grep -c "^FAIL:" stable-test cexe tests fail
+* exec grep -c "^UNRESOLVED:" stable-test cexe tests unresolved
+
+
+!GCC Trunk Test Results (last updated exec stat -L beta-test | grep Modify | awk '{print $2}' cexe)
+* exec grep -c "^PASS:" beta-test cexe tests pass
+* exec grep -c "^FAIL:" beta-test cexe tests fail
+* exec grep -c "^UNRESOLVED:" beta-test cexe tests unresolved
+
+
+GCC6809 is also tested via my pinball project, FreeWPC.  The 3.x based
+versions have not seen any compiler issues in a long time.  4.x is not
+quite working yet.  Bug fixes are generally applied to 3.x first, and
+then ported over to 4.x later.
+
+==Recent Changes (June, 2007)
+* Various optimizations to generate better assembly code for certain C constructs.
+* Clean up of the backend, so that things are done "the right way" more often.
+Also removed a lot of older experimental code that never panned out.
+* Improved the way the frame pointer is used, which should made nested functions
+and &&alloca() work all the time now.
+* -fomit-frame-pointer is not assumed anymore.
+* Fixed some compiler crashes, and some cases where invalid 6809 assembly was output.
+* Fixed a branch instruction length bug when doing comparisons.
+* Fixed startup code sequence so that the return from &&main() is properly returned.
+* Top-level Makefile can now build and install everything, including the assembler,
+linker, and misc. scripts that are required to use gcc6809.  Use "make everything"
+to rebuild everything properly.
+
+
+==Known Issues
+
+* 32-bit integer and most floating-point math are not working completely.
+* Some 16-bit math is known to be inefficient.
+* No support for real hardware is in the C library; programs that use
+standard I/O can only run on the simulator.
+
+
+=Downloads
+
+Coming soon -- for now, please read the section below about using WebSVN.
+
+#### 
+#### GCC6809 can be obtained in a number of ways.
+#### 
+#### ==Release Notes - Version 1.4
+#### 
+#### * &&setjmp/&&longjmp now work correctly
+#### * Most of libgcc is now available and working correctly.  In particular,
+#### complex division was problematic in earlier versions, but is now working
+#### OK.
+#### 
+#### ==Source Code
+#### 
+#### !GCC6809 Release 1.4
+#### 
+#### {{gcc6809-1.4.zip}}
+#### 
+#### {{gcc6809-1.4.tar.gz}}
+#### 
+#### {{gcc6809-1.4.tar.bz2}}
+#### 
+#### !GCC6809 Release 2.0-Beta1
+#### 
+#### {{gcc6809-2.0-beta1.zip}}
+#### 
+#### {{gcc6809-2.0-beta1.tar.gz}}
+#### 
+#### {{gcc6809-2.0-beta1.tar.bz2}}
+#### 
+#### See the manual for instructions on how to compile the source code.
+#### 
+#### ==Binaries
+#### 
+#### !GCC6809 Release 1.4 for Linux
+#### 
+#### {{gcc6809-1.4-linux.tar.gz}}
+#### 
+#### {{gcc6809-1.4-linux.tar.bz2}}
+#### 
+#### !GCC6809 Release 1.4 for Cygwin
+#### 
+#### {{gcc6809-1.4-cygwin.tar.gz}}
+#### 
+#### {{gcc6809-1.4-cygwin.tar.bz2}}
+#### 
+#### Binary tarballs should be extracted from /usr/local, e.g.,
+#### 
+#### &cd /usr/local
+#### &bzcat gcc6809-1.4-linux.tar.bz2 | tar xvf -
+
+=Developers
+
+GCC6809 source code is managed in a Subversion repository.  The URL for
+the repository is <<http://www.oddchange.com/svn/public/gcc6809>>.
+Code for the stable 3.4.6 branch is located in the <b>trunk</b> directory.
+Code for GCC 4.1 and higher is maintained in <b>branches/gcc4.1</b>.
+
+Anonymous read-only access to the repository is allowed to all.
+You will need a Subversion client in order to checkout the files.
+
+There is also a WebSVN frontend that you can use to browse the repository
+and download tarballs without installing any additional software.  It
+is available at <<http://www.oddchange.com/websvn>>.
+
+=C Library
+
+GCC6809 contains a port of newlib, which provides the standard C library
+functions.  The original port, based on newlib version 1.14, has been
+used longer and generally works OK.  A newer port to newlib 1.15 is also
+available as of June 2007, and is being tested now.
+
+The newlib modifications are stored in the repository at
+<<http://www.oddchange.com/svn/public/newlib6809>>.  The <i>trunk</i>
+contains the 1.14 version and <i>branches/m6809-1.15</i> contains the
+1.15 version.
+
+
+=Simulation
+
+GCC6809 provides a portable 6809 simulator that can be used to run
+test programs.  The I/O routines builtin to the C library target the
+simulation environment.  Support for other hardware may be added in the
+future.
+
+The simulator is named &&m6809-run and was originally 
+written by Arto Salmi.  It has been enhanced with the following features:
+
+* Uses GNU autoconf for maximum portability
+* More GDB-like syntax
+* Builtin input/output memory mapped registers
+* Bounds checking, which catches jumps into non-program space, invalid
+opcodes, etc.
+
+The simulator is stored in the repository at
+<<http://www.oddchange.com/svn/public/exec09>>.
+
+=Manual
+
+The <a href="manual.html">detailed manual</a> 
+describes all of the 6809 specific extensions in the compiler.
+
+
+#### =Sample Code
+
+
+=License
+
+All of the major components within GCC6809 (GCC, newlib, and the simulator)
+are released under the GNU General Public License.
+
+=Links
+
+* <<http://skwirl.net/coco/gcc.html>> - James Dessart's original GCC page
+* <<http://gcc.gnu.org>> - GCC homepage
+* <<http://gcc.gnu.org/ml>> - GCC mailing lists
+#* 6809 resource pages
+#* AS Cross Assemblers
+

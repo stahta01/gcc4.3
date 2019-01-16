@@ -1,0 +1,238 @@
+#!/bin/sh
+
+##########################################################################
+#
+# This script automates the process of building a complete 6809
+# toolchain from source control.
+#
+# The build directory requires at least 500MB of storage.
+
+# Author: Brian Dominy
+# Started on November 17, 2006
+#
+##########################################################################
+
+
+# The root of the SVN server that is hosting the files
+urlroot=http://www.oddchange.com/svn/public
+
+# The local directory in which files should be checked out
+# bldroot will be updated below once the correct branch is known.
+bldroot=/home/autobuild/gcc6809
+
+# The specific target to build
+target=m6809-unknown-none
+
+# The default SVN branches to check out.
+branch="trunk"
+sim_branch="exec09/trunk"
+gcc_branch="gcc6809/trunk"
+newlib_branch="newlib6809/branches/m6809-1.15"
+
+# The GCC version to use, since we support multiple versions of GCC
+# on the same branch
+gcc_version=4.2.1
+
+# The location of GCC tarballs
+gcc_tarball_dir=/home/bcd/src/dev6809/gcc6809/gcc-release
+
+# Whether or not to run the GCC testsuite at the end
+gcc_testsuite_flag=1
+
+# Where to store the GCC testsuite logs
+gcc_testsuite_logdir=/home/autobuild/logs
+
+# Parse command-line options
+while [ "x$1" != "x" ]; do
+	arg=$1; shift; case $arg in
+		-h)
+			echo ""
+			echo "-gcc3|gcc4                Select GCC branch"
+			echo "-k                        Keep files; don't extract"
+			echo "--notest                  Don't run the testsuite"
+			echo ""
+			echo "Files are extracted from  : $urlroot"
+			echo "Files are compiled under  : $bldroot"
+			echo ""
+			exit 0
+			;;
+		-bldroot)
+			# Override the base bldroot
+			bldroot=$1; shift
+			;;
+		-gcc3*)
+			branch="trunk"
+			gcc_branch="gcc6809/trunk"
+			gcc_version="3.4.6"
+			gcc_tarball_dir=/home/bcd/src/gcc6809/trunk/gcc-release
+			;;
+		-gcc4*)
+			# Switch to the GCC 4.x branch.  GCC 4.2.0 is the default.
+			branch="gcc4.2.1"
+			gcc_branch="gcc6809/branches/gcc4.1"
+			gcc_version="4.2.1"
+			gcc_tarball_dir=/home/bcd/src/gcc6809/branches/gcc4.1/gcc-release
+			;;
+		-k*|--noextract)
+			# Keep existing sources; don't extract.
+			noextract=y
+			;;
+		--notest)
+			# Don't run the testsuite.
+			gcc_testsuite_flag=0
+			;;
+		*)
+			echo "Error: invalid option $1"
+			exit 1
+	esac
+done
+
+# Various directories, autocalculated from the selected branches,
+# the server root, and the client root (bldroot).  Do not change
+# these!
+
+bldroot="$bldroot/$branch"
+prefix="$bldroot/install"
+log=$bldroot/autobuild.log
+tmpdir=$bldroot/tmp
+
+sim_url="$urlroot/$sim_branch"
+sim_bldroot=$bldroot/sim
+sim_blddir=$sim_bldroot
+sim_srcdir=$sim_bldroot
+
+gcc_url="$urlroot/$gcc_branch"
+gcc_bldroot=$bldroot/gcc
+gcc_blddir=$gcc_bldroot/build/gcc-$gcc_version/gcc
+gcc_srcdir=$gcc_bldroot/src/gcc-$gcc_version/gcc
+
+newlib_url="$urlroot/$newlib_branch"
+newlib_bldroot=$bldroot/newlib
+newlib_blddir=$newlib_bldroot/build/m6809/newlib
+newlib_srcdir=$newlib_bldroot/newlib
+
+
+doit() {
+	echo ">>> $*" >> $log
+	if [ "$1" = "-x" ]; then stop_on_error=1; shift; fi
+	rm -f $tmpdir/.failed
+	( $*; echo $? > $tmpdir/.failed ) 2>&1 | tee -a $log
+	if [ "$stop_on_error" = "1" ]; then
+		if [ "`cat $tmpdir/.failed`" != "0" ]; then
+			exit 1
+		fi
+	fi
+}
+
+
+extract() {
+	# TODO : if files are already extracted, then do an update
+	# rather than a checkout
+	if [ "$noextract" != "" ]; then 
+		doit echo "Skipping extraction from $1"
+		return 0
+	fi
+
+	svn info $2 > /dev/null 2>&1
+	if [ "1" = "0" ]; then
+	#if [ "$?" = "0" ]; then
+		echo "$2 exists (running svn update)"
+		doit svn up $2
+	else
+		echo "$2 is not a working copy (running svn checkout)"
+		doit rm -rf $2
+		doit svn co $1 $2
+	fi
+	return $?
+}
+
+mkdir -p $tmpdir
+rm -f $log
+
+########### Clean Install ##################
+
+echo "Wiping ${prefix}"
+rm -rf ${prefix}; mkdir ${prefix}
+
+########### Build Simulator##################
+
+extract $sim_url $sim_bldroot
+
+cd $sim_bldroot
+
+doit echo "Compiling simulator" && \
+	autoreconf -vis && ./configure && make
+# TODO: install it, make sure testcases are run with it
+
+######## Build binutils / GCC (stage1) ##############
+
+extract $gcc_url $gcc_bldroot
+
+cd $gcc_bldroot
+
+GCC_VERSION=$gcc_version doit \
+	echo "Installing GCC tarballs into $gcc_bldroot" && \
+	cp -p $gcc_tarball_dir/gcc*${gcc_version}* gcc-release
+
+doit echo "Compiling GCC, will install in ${prefix}"
+SUDO="" prefix=${prefix} doit -x make everything GCC_VERSION=${gcc_version}
+
+
+############# Build Newlib ####################
+
+extract $newlib_url $newlib_bldroot
+
+cd $newlib_bldroot/build
+rm -rf Makefile config.cache config.log config.status etc m6809 serdep.tmp
+CC_FOR_TARGET="${prefix}/bin/${target}-gcc" \
+AR_FOR_TARGET="${prefix}/bin/${target}-ar" \
+LD_FOR_TARGET="${prefix}/bin/${target}-ld" \
+RANLIB_FOR_TARGET="${prefix}/bin/m6809-ranlib" \
+	doit -x echo "Configuring newlib..." && \
+	../configure --prefix=${prefix} --target="${target}" --disable-multilib \
+	--program-prefix=${target}- \
+	--disable-malloc-debugging --with-gnu-ld --without-pic 
+doit -x echo "Making newlib..." && make
+doit -x echo "Installing newlib..." && make install
+
+cd ${prefix}/${target}/lib
+doit -x echo "Running ar --cache on newlib outputs..."
+doit -x ${prefix}/m6809/bin/ar --cache ./libc.a
+doit -x ${prefix}/m6809/bin/ar --cache ./libm.a
+doit -x ${prefix}/m6809/bin/ar --cache ./libg.a
+
+############# Link GCC / Newlib ####################
+
+cd $gcc_blddir/..
+mkdir -p m6809 ; cd m6809
+rm -f newlib; ln -s $newlib_blddir .
+
+cd $gcc_srcdir/..
+rm -f newlib; ln -s $newlib_srcdir .
+
+############# Run GCC Testsuite ####################
+
+if [ "$gcc_testsuite_flag" = "1" ]; then
+
+	cd $gcc_blddir
+	rm -f site.exp ; make site.exp
+	
+	doit echo "Running GCC testsuite..." && \
+		make check-gcc RUNTESTFLAGS="SIM=${sim_bldroot}/m6809-run --target_board=m6809-sim"
+
+	######## Publish Test Results ################
+
+	cd $gcc_blddir
+	today=`date +%Y-%m-%d`
+	logfile=`find . -name "gcc.log"`
+	sumfile=`find . -name "gcc.sum"`
+	mkdir -p $gcc_testsuite_logdir
+	newlogfile=$gcc_testsuite_logdir/`basename $logfile.$today`
+	newsumfile=$gcc_testsuite_logdir/`basename $sumfile.$today`
+	if [ ! -f $newlogfile ]; then mv $logfile $newlogfile; fi
+	if [ ! -f $newsumfile ]; then mv $sumfile $newsumfile; fi
+fi # gcc_testsuite_flag = "1"
+
+############# Build Installation ####################
+
+# TODO

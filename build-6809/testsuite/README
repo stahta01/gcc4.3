@@ -1,0 +1,5 @@
+To run the gcc testsuite on the 6809, you'll need DejaGNU installed.
+Copy the m6809-sim.exp file here into its baseboards/ directory.
+See http://gcc.gnu.org/simtest-howto.html for more information on
+what to do next.
+

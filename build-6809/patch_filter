@@ -1,0 +1,23 @@
+#!/usr/bin/perl -w
+
+my $filename = "";
+my $file_ok = 1;
+while (<STDIN>) {
+	chomp;
+	if (/^diff --git a\/(.*) b\/(.*)/) {
+		$filename = $1;
+		$file_ok = 1;
+		for my $arg (@ARGV) {
+			if ($filename =~ /$arg/) {
+				$file_ok = 0;
+				#print ">>> skipping $filename which matches $arg\n";
+				last;
+			}
+		}
+	}
+
+	if ($file_ok) {
+		print "$_\n";
+	}
+}
+

@@ -1,0 +1,188 @@
+
+<p>Over the years there have been a number of attempts to port <b>gcc</b>
+to the 6809.  None of these have ever ended up as part of the standard
+gcc distribution.  What is offered here is the best version that I am
+aware of.</p>
+<p>This distribution is based on the work of James Dessart, whose
+<a href="http://skwirl.ca/coco/gcc.html">gcc for 6809 page</a>
+was the basis for this version.  You should
+visit James' page for some background on the history of this port.
+You do not need any of the files from his site in order to build gcc
+proper.  You will, however, need the assembler and linker that are
+there, in order to make final executables.</p>
+
+<p>Again, the gcc here will only translate C source code into
+6809 assembler files.  You still need an assembler and linker,
+and possibly libraries, to complete your application.  At present
+the only supported assembler is the <b>asxxxx</b> tools from Alan
+Baldwin.  At least version 1.5.2 should be used; I'm currently doing
+most of my testing with version 4.1.0. </p>
+
+<p>As of the latest development tree, gcc versions 3.4.4 through 3.4.6
+work correctly.  gcc 4.x compiles but frequently aborts.  gcc 3.3.6
+used to work OK but isn't supported anymore.</p>
+
+<p>This is an active project; if you want to contribute, have any
+questions, or want to report any bugs with this software, contact me at 
+<a href="mailto:brian@oddchange.com">brian@oddchange.com</a>.</p>
+
+<h2>Source Code Packages</h2>
+
+<p>Packages are not being provided for future versions of gcc6809,
+due to lack of interest.  See information below on how to access
+the online source repository; this is open to everyone.</p>
+
+<p>Download the 
+<a href="/gcc6809/gcc6809_src_v1.2.tar.bz2">gcc6809 Release 1.2</a> 
+source code if you want to build
+the compiler yourself.  You'll need a native version of gcc on your
+host system.</p>
+
+<p>This tarball consists of the 6809 machine definition and some
+replacements for some core gcc files.  Once you've downloaded it,
+expand it using tar and bunzip.</p>
+
+<p>In order to build, you'll also need an official gcc tarball for
+the version you want to build.  You can get this from any GNU mirror.
+For example, for gcc6809 3.4.5, download <b>gcc-3.4.5.tar.bz2</b>.  Place
+this file into the <b>releases</b> directory that was created when you
+expanded the 6809 tarball.</p>
+
+<p>Finally, to build the compiler, just type <b>make everything</b>, and
+hopefully it will work for you.  Read the <b>Makefile</b> for a list
+of other ways you can kick off the build, and for more information on
+what to do next.</p>
+
+<p>If you use Cygwin, beware that building the compiler is <b>slow</b>.</p>
+
+<p>Note, you do not need the patchfiles on James' web site, as they
+have been incorporated into the 6809 tarball for one-stop downloading.</p>
+
+<h2>Online Source Code Access</h2>
+<p>The source code is managed in a Subversion repository at the following
+location:</p>
+
+<pre>
+http://www.oddchange.com/svn/public/gcc6809
+</pre>
+
+<p>Anonymous read-only access to the repository is allowed to all.
+You will need a Subversion client in order to checkout the files; or
+you can use <a href="/websvn/">WebSVN</a> to browse the repository
+and/or download tarballs.</p>
+
+<p>The latest stable release of the code is located in the
+<b>tags/2006-06-09</b> directory.  The absolute latest changes can
+always be found by going into the <b>trunk</b> directory.</p>
+
+<h2>Philosophical Differences</h2>
+
+<p>I've made a number of changes which relate specifically to the pilot project on
+which I am using this compiler.  I believe that these are worthy changes that
+apply elsewhere, too, but users of previous versions of gcc6809 may not agree.</p>
+
+<p>By default, <b>int</b> is an 8-bit quantity, not a 16-bit one.  Even though
+gcc can do some 16-bit math using the index registers, fundamentally I believe
+the machine to be 8-bit and believe that the programmer should explicit ask for
+16-bit quantities when needed.  In many cases, this is sufficient, and leads to
+better register usage.</p>
+
+<p>I've made little attempts to keep compatibility with James' original
+version, as I've gotten no interest from anyone using that version to
+migrate to the new one.  I'm willing to work with other parties to
+help keep compatibility for existing projects.</p>
+
+<h2>Release Notes</h2>
+
+<h3>Release 1.3 (Coming Soon -- these changes are only in SVN)</h3>
+
+<ul>
+<li>GCC 3.4 is now working.  I've tested with 3.4.4 through 3.4.6.</li>
+<li><b>#pragma naked</b> and <b>#pragma interrupt</b> are now deprecated,
+and may not always work correctly.  Use <b>__attribute__((naked))</b>
+and <b>__attribute__((interrupt))</b> instead.</li>
+<li>The condition code register is now exposed.  Declaring a variable as 
+<b>asm ("cc")</b> ties it to the CC register.  The only operations
+supported are AND or OR, corresponding to the andcc and orcc instructions.</li>
+<li>Enhanced versions of <b>subreg</b> patterns, which allows more
+mixed 8-bit and 16-bit arithmetic to compile OK.</li>
+<li>Optimize calls to noreturn functions.</li>
+</ul>
+
+<h3>Release 1.2</h3>
+
+<ul>
+<li>Branch instructions should be auto-selected based on instruction sizes.
+If the target can be reached with a short branch, use that, otherwise use
+a longer one.  The old solution relies on the programmer to select
+this using command-line options and #pragmas.  The old pragmas will be
+retained for compatibility.  The command-line switches <b>-mshort-branch</b>
+and <b>-mlong-branch</b> will also override.  Normally, neither of these
+should be used.</li>
+<li>For the <b>WPC</b>, use the hardware shifter when possible.  The
+<b>-mwpc</b> option will enable all WPC extensions.  Warning, this is
+not interrupt-safe at the moment.</li>
+</ul>
+
+<h3>Release 1.1</h3>
+
+<ul>
+<li>Files have been cleaned up significantly in terms of alignment.
+They are much more readable than before, which will help with maintenance.
+Also, many of the constructs used in the backend have been around since
+gcc 1.x.  A lot of these has been rewritten to take advantage of newer
+gcc features.</li>
+<li>Integer defaults to 8-bit.  You can override this using <b>-mint16</b>.</li>
+<li>Many new instruction patterns have been added to the backend.  This
+fixes many compiler aborts for when a particular sequence could not be
+generated.  Note: there are still some problems, but quite a few have been
+resolved.  Most of the problems relate to complex 16-bit math, for which
+library functions should really be used.</li>
+<li><b>-O2</b> works, at least for me.</li>
+<li>Function arguments can be passed in registers.  The CVS version pushes
+all arguments on the stack.  If you don't like the new method, use
+<b>-mno-regargs</b>.</li>
+<li>Function return value for 16-bit quantities is placed in the X register
+rather than D.  The rationale is that most 16-bit quantities will be
+pointers.</li>
+<li>The X register is considered call-clobbered, and does not need to be
+saved on entry to a function.</li>
+<li>Limited support for direct mode addressing has been added.  You can
+declare variables as belonging in the direct section, via
+<b>__attribute__((section("direct")))</b>, and the compiler will use
+direct addressing when doing memory accesses.  This generates shorter
+instructions and also executes them faster.  You can disable this feature
+by using <b>-mnodirect</b>.</li>
+<li><b>#pragma naked</b> can be used before any function to disable
+the function prologue/epilogue.  This can be used to write C functions that
+act like true assembly language routines.</li>
+<li>Short branch instructions are the default.  In large functions,
+this will break; you can use a <b>#pragma long_branch</b> before such
+a function, and then <b>#pragma short_branch</b> after it to change
+the method.</li>
+</ul>
+
+<h2>Future Enhancements</h2>
+
+<p>More changes are in the pipeline:</p>
+
+<ul>
+<li>Support inline const function arguments.  These require that the caller
+place the arguments in memory immediately following the function call.
+The subroutine finds the arguments in memory using the return address,
+and adjusts it accordingly.  This saves memory in that callers do not
+need to load registers/memory with constant arguments, nor do they need
+to pass a pointer to a structure, since the location is implied.  There is
+extra overhead in the subroutine to decode the arguments this way, but
+for frequently used functions with only constant arguments, there will
+be space savings.</li>
+<li>Use the 'A' accumulator register more.  It is mostly ignored or
+only used internally for certain multi-instruction sequences.  Using
+'A' better reduces the need for more expensive memory operations.</li>
+<li>Work with the GCC 4.0 releases.  This work is being done in
+<b>branches/gcc41</b> to avoid breaking the working GCC 3.x releases
+on the mainline.</li>
+<li>Provide more optimal patterns for some instructions that are still
+slightly inefficient.</li>
+</ul>
+
