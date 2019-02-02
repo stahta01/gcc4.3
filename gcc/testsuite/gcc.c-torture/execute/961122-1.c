@@ -1,3 +1,5 @@
+/* { dg-xfail-if "long long not > 32-bit" { m6809-*-* } { "*" } { "" } } */
+
 long long acc;
 
 addhi (short a)

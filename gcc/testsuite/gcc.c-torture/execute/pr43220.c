@@ -21,7 +21,11 @@ lab:;
       n++;
     }
 
+#ifdef __m6809__
+  if (n < 1000)
+#else
   if (n < 1000000)
+#endif
     goto lab;
 
   return 0;

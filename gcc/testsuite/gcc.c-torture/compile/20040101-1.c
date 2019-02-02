@@ -1,3 +1,5 @@
+/* { dg-xfail-if "int not 32-bit" { m6809-*-* } { "-O0" } { "" } } */
+
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
 

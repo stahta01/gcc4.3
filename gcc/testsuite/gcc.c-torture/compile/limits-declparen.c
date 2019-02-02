@@ -1,3 +1,4 @@
+/* this fails for 6809 with -O3 -g only due to long .stabs */
 #define PTR1 (* (* (* (* (* (* (* (* (* (*
 #define PTR2 PTR1 PTR1 PTR1 PTR1 PTR1 PTR1 PTR1 PTR1 PTR1 PTR1
 #define PTR3 PTR2 PTR2 PTR2 PTR2 PTR2 PTR2 PTR2 PTR2 PTR2 PTR2

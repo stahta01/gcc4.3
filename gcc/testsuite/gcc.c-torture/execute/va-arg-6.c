@@ -8,7 +8,7 @@ f (int n, ...)
 
   if (va_arg (args, int) != 10)
     abort ();
-  if (va_arg (args, long long) != 10000000000LL)
+  if (va_arg (args, long long) != 1000000LL)
     abort ();
   if (va_arg (args, int) != 11)
     abort ();
@@ -18,7 +18,7 @@ f (int n, ...)
     abort ();
   if (va_arg (args, int) != 13)
     abort ();
-  if (va_arg (args, long long) != 20000000000LL)
+  if (va_arg (args, long long) != 2000000LL)
     abort ();
   if (va_arg (args, int) != 14)
     abort ();
@@ -30,6 +30,6 @@ f (int n, ...)
 
 main ()
 {
-  f (4, 10, 10000000000LL, 11, 3.14L, 12, 13, 20000000000LL, 14, 2.72);
+  f (4, 10, 1000000LL, 11, 3.14L, 12, 13, 2000000LL, 14, 2.72);
   exit (0);
 }

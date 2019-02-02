@@ -1,3 +1,4 @@
+/* { dg-skip-if "" { m6809-*-* } { "-g" } { "" } } */
 #define PTR1 * * * * * * * * * *
 #define PTR2 PTR1 PTR1 PTR1 PTR1 PTR1 PTR1 PTR1 PTR1 PTR1 PTR1
 #define PTR3 PTR2 PTR2 PTR2 PTR2 PTR2 PTR2 PTR2 PTR2 PTR2 PTR2

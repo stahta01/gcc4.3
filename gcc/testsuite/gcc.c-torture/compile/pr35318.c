@@ -1,3 +1,4 @@
+/* { dg-skip-if "no float registers" { "m6809-*-*" } { "*" } { "" } } */
 /* PR target/35318 */
 
 void
