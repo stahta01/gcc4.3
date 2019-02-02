@@ -1,40 +1,59 @@
-/* libgcc routines for m6809
-   Copyright (C) 2006 Free Software Foundation, Inc.
+#if 0
+;
+; libgcc routines for m6809
+;   Copyright (C) 2006 Free Software Foundation, Inc.
+;
+; This file is part of GCC.
+;
+; GCC is free software; you can redistribute it and/or modify
+; it under the terms of the GNU General Public License as published by
+; the Free Software Foundation; either version 3, or (at your option)
+; any later version.
+;
+; GCC is distributed in the hope that it will be useful,
+; but WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+; GNU General Public License for more details.
+;
+; You should have received a copy of the GNU General Public License
+; along with GCC; see the file COPYING3.  If not see
+; <http://www.gnu.org/licenses/>.
+;
+; As a special exception, if you link this library with other files,
+; some of which are compiled with GCC, to produce an executable,
+; this library does not by itself cause the resulting executable
+; to be covered by the GNU General Public License.
+; This exception does not however invalidate any other reasons why
+; the executable file might be covered by the GNU General Public License.
+;
+#endif
 
-This file is part of GCC.
+	.module	libgcc1.s
 
-GCC is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3, or (at your option)
-any later version.
-
-GCC is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with GCC; see the file COPYING3.  If not see
-<http://www.gnu.org/licenses/>.  */
-
-/* As a special exception, if you link this library with other files,
-   some of which are compiled with GCC, to produce an executable,
-   this library does not by itself cause the resulting executable
-   to be covered by the GNU General Public License.
-   This exception does not however invalidate any other reasons why
-   the executable file might be covered by the GNU General Public License.  */
+#ifdef __PIC__
+#define JUMP lbra
+#define CALL lbsr
+#else
+#define JUMP jmp
+#define CALL jsr
+#endif
+#define SIGFPE JUMP _abort
 
 
-#define SIGFPE jmp _abort
-
-
+#if defined(L_ashlhi3) || defined(L_ashrhi3) || defined(L_lshrhi3)
 	; Shift functions
 	; On input, D is value to be shifted, and X has shift count.
 	; Result is also in D.
+#endif
+
+
+
+
+
 
 #ifdef L_ashlhi3
-	.area .text
-	.globl _ashlhi3
+	.area	.text
+	.globl	_ashlhi3
 _ashlhi3:
 	pshs	x
 1$:
@@ -48,9 +67,10 @@ _ashlhi3:
 	puls	x,pc
 #endif
 
+
 #ifdef L_ashrhi3
-	.area .text
-	.globl _ashrhi3
+	.area	.text
+	.globl	_ashrhi3
 _ashrhi3:
 	pshs	x
 1$:
@@ -66,8 +86,8 @@ _ashrhi3:
 
 
 #ifdef L_lshrhi3
-	.area .text
-	.globl _lshrhi3
+	.area	.text
+	.globl	_lshrhi3
 _lshrhi3:
 	pshs	x
 1$:
@@ -82,63 +102,8 @@ _lshrhi3:
 #endif
 
 
-#ifdef L_m0
-	.area		direct
-	.globl	m0, m1, m2, m3
-m0: .blkb 1
-m1: .blkb 1
-m2: .blkb 1
-m3: .blkb 1
-#endif
-
-#ifdef L_m4
-	.area		direct
-	.globl	m4, m5, m6, m7
-m4: .blkb 1
-m5: .blkb 1
-m6: .blkb 1
-m7: .blkb 1
-#endif
-
-#ifdef L_im0
-	.area		direct
-	.globl	im0, im1, im2, im3
-im0: .blkb 1
-im1: .blkb 1
-im2: .blkb 1
-im3: .blkb 1
-#endif
-
-#ifdef L_im4
-	.area		direct
-	.globl	im4, im5, im6, im7
-im4: .blkb 1
-im5: .blkb 1
-im6: .blkb 1
-im7: .blkb 1
-#endif
-
-#ifdef L_fm0
-	.area		direct
-	.globl	fm0, fm1, fm2, fm3
-fm0: .blkb 1
-fm1: .blkb 1
-fm2: .blkb 1
-fm3: .blkb 1
-#endif
-
-#ifdef L_fm4
-	.area		direct
-	.globl	fm4, fm5, fm6, fm7
-fm4: .blkb 1
-fm5: .blkb 1
-fm6: .blkb 1
-fm7: .blkb 1
-#endif
-
-
 #ifdef L_ashlsi3_one
-	.area		.text
+	.area	.text
 	.globl	_ashlsi3_one
 _ashlsi3_one:
 	asl	3,x
@@ -148,9 +113,12 @@ _ashlsi3_one:
 	rts
 #endif
 
+
 #ifdef L_ashlsi3
-	/* X points to the SImode (source/dest)
-		B is the count */
+	.area	.text
+	.globl	_ashlsi3
+	; X points to the SImode (source/dest)
+	; B is the count
 _ashlsi3:
 	pshs	u
 	cmpb	#16
@@ -164,7 +132,6 @@ try8:
 	blt	try_rest
 	subb	#8
 	; Shift by 8
-
 try_rest:
 	tstb
 	beq	done
@@ -180,8 +147,9 @@ done:
 	puls	u,pc
 #endif
 
+
 #ifdef L_ashrsi3_one
-	.area		.text
+	.area	.text
 	.globl	_ashlsi3_one
 _ashrsi3_one:
 	asr	,x
@@ -193,7 +161,7 @@ _ashrsi3_one:
 
 
 #ifdef L_lshrsi3_one
-	.area		.text
+	.area	.text
 	.globl	_lshrsi3_one
 _lshrsi3_one:
 	lsr	,x
@@ -205,8 +173,8 @@ _lshrsi3_one:
 
 
 #ifdef L_clzsi2
-	.area .text
-	.globl ___clzhi2
+	.area	.text
+	.globl	___clzhi2
 	; Input: X = 16-bit unsigned integer
 	; Output: X = number of leading zeros
 	; This function destroys the value in D.
@@ -225,7 +193,6 @@ ___clzhi2:
 	clra
 	ldb	d,x
 	bne	upper_bit_set
-
 lower_bit_set:
 	; If the upper byte is zero, then check the lower
 	; half of the word.  Return 16-a.
@@ -235,20 +202,19 @@ lower_bit_set:
 	negb
 	addb	#16
 	bra	done
-
 upper_bit_set:
 	negb
 	addb	#8
 	puls	x
-
 done:
 	tfr	d,x
 	puls	pc
 #endif
 
+
 #ifdef L_clzdi2
-	.area .text
-	.globl ___clzsi2
+	.area	.text
+	.globl	___clzsi2
 	; Input: 32-bit unsigned integer is on the stack, just
 	; above the return address
 	; Output: X = number of leading zeros
@@ -261,14 +227,15 @@ ___clzsi2:
 	ldx	2,s
 	lbne	___clzhi2
 	ldx	4,s
-	jsr	___clzhi2
+	CALL	___clzhi2
 	leax	16,x
 	rts
 #endif
 
+
 #ifdef L_ctzsi2
-	.area .text
-	.globl ___ctzhi2
+	.area	.text
+	.globl	___ctzhi2
 	; Input: X = 16-bit unsigned integer
 	; Output: X = number of trailing zeros
 	; F(x) = 15 - clzhi2(X & -x)
@@ -284,7 +251,7 @@ ___ctzhi2:
 	andb	,s+
 	anda	,s+
 	tfr	d,x
-	jsr	___clzhi2
+	CALL	___clzhi2
 	tfr	x,d
 	subd	#16
 	coma
@@ -295,8 +262,8 @@ ___ctzhi2:
 
 
 #ifdef L_ctzdi2
-	.area .text
-	.globl ___ctzsi2
+	.area	.text
+	.globl	___ctzsi2
 	; Input: 32-bit unsigned integer is on the stack, just
 	; above the return address
 	; Output: X = number of leading zeros
@@ -309,7 +276,7 @@ ___ctzsi2:
 	ldx	4,s
 	lbne	___ctzhi2
 	ldx	2,s
-	jsr	___ctzhi2
+	CALL	___ctzhi2
 	leax	16,x
 	rts
 #endif
@@ -322,26 +289,26 @@ ___ctzsi2:
 ;;; Arguments: Two 16-bit values, one in stack, one in X.
 ;;; Result: 16-bit result in X
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	.area .text
-	.globl _mulhi3
+	.area	.text
+	.globl	_mulhi3
 _mulhi3:
 	pshs	x
-	lda   5,s   ; left msb * right lsb * 256
-	ldb   ,s
+	lda	5,s   ; left msb * right lsb * 256
+	ldb	,s
 	mul
-	tfr   b,a
+	tfr	b,a
 	clrb
-	tfr   d,x
-	ldb   1,s   ; left lsb * right msb * 256
-	lda   4,s
+	tfr	d,x
+	ldb	1,s   ; left lsb * right msb * 256
+	lda	4,s
 	mul
-	tfr   b,a
+	tfr	b,a
 	clrb
-	leax  d,x
-	ldb   1,s   ; left lsb * right lsb
-	lda   5,s
+	leax	d,x
+	ldb	1,s   ; left lsb * right lsb
+	lda	5,s
 	mul
-	leax  d,x
+	leax	d,x
 	puls	d,pc  ; kill D to remove initial push
 #endif
 
@@ -352,15 +319,15 @@ _mulhi3:
 ;;; Arguments: Dividend in X, divisor on the stack
 ;;; Returns result in X.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	.area .text
-	.globl _divhi3
+	.area	.text
+	.globl	_divhi3
 _divhi3:
 	ldd	2,s
 	bne	do_div		; check dividend
 	SIGFPE
 do_div:
 	pshs	x
-	jsr	_seuclid
+	CALL	_seuclid
 	puls	x,pc
 #endif
 
@@ -371,20 +338,19 @@ do_div:
 ;;; Arguments: Dividend in X, divisor on the stack
 ;;; Returns result in X.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	.area .text
-	.globl _modhi3
+	.area	.text
+	.globl	_modhi3
 _modhi3:
 	ldd	2,s
 	bne	do_mod		; check dividend
 	SIGFPE
 do_mod:
 	pshs	x
-	jsr	_seuclid
+	CALL	_seuclid
 	leas	2,s
 	tfr	d,x
 	rts
 #endif
-
 
 
 #ifdef L_udivhi3
@@ -393,15 +359,15 @@ do_mod:
 ;;; Arguments: Dividend in X, divisor on the stack
 ;;; Returns result in X.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	.area .text
-	.globl _udivhi3
+	.area	.text
+	.globl	_udivhi3
 _udivhi3:
 	ldd	2,s
 	bne	do_udiv		; check dividend
 	SIGFPE
 do_udiv:
 	pshs	x
-	jsr	_euclid
+	CALL	_euclid
 	puls	x,pc
 #endif
 
@@ -412,15 +378,15 @@ do_udiv:
 ;;; Arguments: Dividend in X, divisor on the stack
 ;;; Returns result in X.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	.area .text
-	.globl _umodhi3
+	.area	.text
+	.globl	_umodhi3
 _umodhi3:
 	ldd	2,s
 	bne	do_umod		; check dividend
 	SIGFPE
 do_umod:
 	pshs	x
-	jsr	_euclid
+	CALL	_euclid
 	leas	2,s
 	tfr	d,x
 	rts
@@ -435,13 +401,12 @@ do_umod:
 ;		jsr _euclid
 ;	quotient on the stack (left)
 ;	modulus in d
-
 	.area	.text
 	.globl	_euclid
-	left=5
-	right=1			; word
-	count=0			; byte
-	CARRY=1			; alias
+left	=	5
+right	=	1		; word
+count	=	0		; byte
+carry	=	1		; alias
 _euclid:
 	leas	-3,s		; 2 local variables
 	clr	count,s		; prescale divisor
@@ -462,10 +427,10 @@ mod1:
 	subd	right,s		; check subtract
 	bcc	mod2
 	addd	right,s
-	andcc	#~CARRY
+	andcc	#~carry
 	bra	mod3
 mod2:
-	orcc	#CARRY
+	orcc	#carry
 mod3:
 	rol	left+1,s	; roll in carry
 	rol	left,s
@@ -477,6 +442,7 @@ mod3:
 	rts
 #endif
 
+
 #ifdef L_seuclid
 ;	signed euclidean division
 ;	calling: (left / right)
@@ -487,43 +453,42 @@ mod3:
 ;	modulus in d
 	.area	.text
 	.globl	_seuclid
-	left=6
-	right=2
-	quot_sign=1
-	mod_sign=0
+left	=	6
+right	=	2
+quo_sgn	=	1
+mod_sgn	=	0
 _seuclid:
 	leas	-4,s		; 3 local variables
 	std	right,s
-	clr	mod_sign,s
-	clr	quot_sign,s
+	clr	mod_sgn,s
+	clr	quo_sgn,s
 	ldd	left,s
 	bge	mod_abs
-	inc	mod_sign,s	; sign(mod) = sign(left)
-	inc	quot_sign,s
+	inc	mod_sgn,s	; sign(mod) = sign(left)
+	inc	quo_sgn,s
 	bsr	negd		; abs(left) -> D
 mod_abs:
 	pshs	b,a		; push abs(left)
 	ldd	right+2,s	; all references shifted by 2
 	bge	quot_abs
-	dec	quot_sign+2,s	; sign(quot) = sign(left) XOR sign(right)
+	dec	quo_sgn+2,s	; sign(quot) = sign(left) XOR sign(right)
 	bsr	negd		; abs(right) -> D
 quot_abs:
-	jsr	_euclid		; call (unsigned) euclidean division
+	CALL	_euclid		; call (unsigned) euclidean division
 	std	right+2,s
 	puls	a,b		; quot -> D
-	tst	quot_sign,s	; all references no longer shifted
+	tst	quo_sgn,s	; all references no longer shifted
 	beq	quot_done
 	bsr	negd
 quot_done:
 	std	left,s		; quot -> left
 	ldd	right,s
-	tst	mod_sign,s
+	tst	mod_sgn,s
 	beq	mod_done
 	bsr	negd
 mod_done:
 	leas	4,s		; destroy stack frame
 	rts
-
 negd:				; self-explanatory !
 	nega
 	negb
@@ -532,11 +497,63 @@ negd:				; self-explanatory !
 #endif
 
 
+#ifdef L_m0
+	.area	.direct
+	.globl	m0,m1,m2,m3
+m0:	.blkb	1
+m1:	.blkb	1
+m2:	.blkb	1
+m3:	.blkb	1
+#endif
 
-#ifdef L_pending_addsi3
-_addsi3:
-	rts
-#endif /* L_pending_addsi3 */
 
+#ifdef L_m4
+	.area	.direct
+	.globl	m4,m5,m6,m7
+m4:	.blkb	1
+m5:	.blkb	1
+m6:	.blkb	1
+m7:	.blkb	1
+#endif
+
+
+#ifdef L_im0
+	.area	.direct
+	.globl	im0,im1,im2,im3
+im0:	.blkb	1
+im1:	.blkb	1
+im2:	.blkb	1
+im3:	.blkb	1
+#endif
+
+
+#ifdef L_im4
+	.area	.direct
+	.globl	im4,im5,im6,im7
+im4:	.blkb	1
+im5:	.blkb	1
+im6:	.blkb	1
+im7:	.blkb	1
+#endif
+
+
+#ifdef L_fm0
+	.area	.direct
+	.globl	fm0,fm1,fm2,fm3
+fm0:	.blkb	1
+fm1:	.blkb	1
+fm2:	.blkb	1
+fm3:	.blkb	1
+#endif
+
+
+#ifdef L_fm4
+	.area	.direct
+	.globl	fm4,fm5,fm6,fm7
+fm4:	.blkb	1
+fm5:	.blkb	1
+fm6:	.blkb	1
+fm7:	.blkb	1
+#endif
 
 

@@ -19,22 +19,21 @@ along with GCC; see the file COPYING3.  If not see
 #ifndef __M6809_PROTOS_H__
 #define __M6809_PROTOS_H__
 
-void 					print_options (FILE *file);
-void 					m6809_cpu_cpp_builtins (void);
-void 					m6809_override_options (void);
-void 					m6809_init_builtins (void);
-unsigned int 		m6809_get_live_regs (void);
-const char * 		m6809_get_regs_printable (unsigned int regs);
-unsigned int 		m6809_get_regs_size (unsigned int regs);
-int 					m6809_function_has_type_attr_p (tree decl, const char *);
-int 					m6809_current_function_has_type_attr_p (const char *);
-int 					prologue_epilogue_required (void);
-int 					noreturn_functionp (rtx x);
-void 					output_function_prologue (FILE *file, int size);
-void 					output_function_epilogue (FILE *file, int size);
-int 					check_float_value (enum machine_mode mode, double *d, int overflow);
-void 					m6809_asm_named_section (const char *name, unsigned int flags, unsigned int align);
-void 					m6809_asm_file_start (void);
+void              print_options (FILE *file);
+void              m6809_cpu_cpp_builtins (void);
+void              m6809_override_options (void);
+void              m6809_init_builtins (void);
+unsigned int      m6809_get_live_regs (void);
+const char *      m6809_get_regs_printable (unsigned int regs);
+unsigned int      m6809_get_regs_size (unsigned int regs);
+int               m6809_function_has_type_attr_p (tree decl, const char *);
+int               m6809_current_function_has_type_attr_p (const char *);
+int               prologue_epilogue_required (void);
+void              output_function_prologue (FILE *file, int size);
+void              output_function_epilogue (FILE *file, int size);
+int               check_float_value (enum machine_mode mode, double *d, int overflow);
+void              m6809_asm_named_section (const char *name, unsigned int flags, tree decl);
+void              m6809_asm_file_start (void);
 void              m6809_output_ascii (FILE *fp, const char *str, unsigned long size);
 void              m6809_declare_function_name (FILE *asm_out_file, const char *name, tree decl);
 void              m6809_reorg (void);
@@ -53,29 +52,34 @@ void              m6809_output_addsi3 (int rtx_code, rtx *operands);
 rtx               m6809_function_arg_on_stack (CUMULATIVE_ARGS *cump);
 void              expand_constant_shift (int code, rtx dst, rtx src, rtx count);
 int               m6809_single_operand_operator (rtx exp);
+void              m6809_split_shift (int code, rtx *operands);
+int               m6809_can_eliminate (int from, int to);
+int               m6809_initial_elimination_offset (int from, int to);
+const char *      m6809_abi_version_to_str (int version);
+bool              m6809_allocate_stack_slots_for_args (void);
 
 #ifdef TREE_CODE
 int m6809_init_cumulative_args (CUMULATIVE_ARGS cum, tree fntype, rtx libname);
 #endif /* TREE_CODE */
 
 #ifdef RTX_CODE
-void 					print_direct_prefix (FILE *file, rtx addr);
-void 					print_operand (FILE *file, rtx x, int code);
-void 					print_operand_address (FILE *file, rtx addr);
-void 					notice_update_cc (rtx exp, rtx insn);
-enum 					reg_class m6809_preferred_reload_class (rtx x, enum reg_class regclass);
-rtx 					gen_rtx_const_high (rtx r);
-rtx 					gen_rtx_const_low (rtx r);
-rtx 					gen_rtx_register_pushpop (int pop_flag, int regs);
-void 					emit_libcall_insns (enum machine_mode mode, const char *name, rtx *operands, int count);
-const char *		output_branch_insn (enum rtx_code code, rtx *operands, int length);
-void 					output_far_call_insn (rtx *operands, int has_return);
-void 					m6809_initialize_trampoline (rtx tramp, rtx fnaddr, rtx cxt);
-rtx 					m6809_expand_builtin (tree exp, rtx target, rtx subtarget, enum machine_mode mode, int ignore);
+void              print_direct_prefix (FILE *file, rtx addr);
+void              print_operand (FILE *file, rtx x, int code);
+void              print_operand_address (FILE *file, rtx addr, rtx ofst);
+void              notice_update_cc (rtx exp, rtx insn);
+enum              reg_class m6809_preferred_reload_class (rtx x, enum reg_class regclass);
+rtx               gen_rtx_const_high (rtx r);
+rtx               gen_rtx_const_low (rtx r);
+rtx               gen_rtx_register_pushpop (int pop_flag, int regs);
+void              emit_libcall_insns (enum machine_mode mode, const char *name, rtx *operands, int count);
+const char *      output_branch_insn (enum rtx_code code, rtx *operands, int length);
+void              output_call_insn (rtx *operands);
+void              output_far_call_insn (rtx *operands, int has_return);
+void              m6809_initialize_trampoline (rtx tramp, rtx fnaddr, rtx cxt);
+rtx               m6809_expand_builtin (tree exp, rtx target, rtx subtarget, enum machine_mode mode, int ignore);
 const char *      far_functionp (rtx x);
 rtx               m6809_function_value (const tree valtype, const tree func);
 void              m6809_output_shift_insn (int rtx_code, rtx *operands);
-
 #endif /* RTX_CODE */
 
 #endif /* __M6809_PROTOS_H__ */

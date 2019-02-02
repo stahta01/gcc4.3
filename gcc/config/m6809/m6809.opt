@@ -19,9 +19,9 @@
 ; Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA
 ; 02110-1301, USA.
 
-margcount
-Target Mask(ARGCOUNT)
-Push argument count
+;margcount
+;Target Mask(ARGCOUNT)
+;Push argument count
 
 mint8
 Target RejectNegative Mask(BYTE_INT)
@@ -35,13 +35,13 @@ mreg-args
 Target Mask(REG_ARGS)
 Use registers for function arguments
 
-mshort_size 
-Target RejectNegative Mask(SMALL_SIZE_T)
-Use 8-bit size_t
+;mshort_size
+;Target RejectNegative Mask(SMALL_SIZE_T)
+;Use 8-bit size_t
 
-mlong_size
-Target RejectNegative InverseMask(SMALL_SIZE_T)
-Use 16-bit size_t
+;mlong_size
+;Target RejectNegative InverseMask(SMALL_SIZE_T)
+;Use 16-bit size_t
 
 mdirect
 Target Mask(DIRECT)
@@ -75,7 +75,7 @@ mbss-section=
 Target RejectNegative Joined Var(bss_section_ptr)
 Sets the name of the section for uninitialized data
 
-mabi_version=
+mabi=
 Target RejectNegative Joined Var(m6809_abi_version_ptr)
 Sets the calling convention
 

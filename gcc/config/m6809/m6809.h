@@ -61,7 +61,7 @@ along with GCC; see the file COPYING3.  If not see
 
 /* Run-time compilation parameters selecting different hardware subsets.  */
 extern int target_flags;
-extern short *reg_renumber;	/* def in local_alloc.c */
+extern short *reg_renumber; /* def in local_alloc.c */
 
 /* Runtime current values of section names */
 extern int section_changed;
@@ -77,15 +77,15 @@ extern unsigned int m6809_abi_version;
 /* ABI versions */
 
 #define M6809_ABI_VERSION_STACK 0
-#define M6809_ABI_VERSION_REGS 1
-#define M6809_ABI_VERSION_BX 2
+#define M6809_ABI_VERSION_REGS 1 /* deprecated, same as BX */
+#define M6809_ABI_VERSION_BX 1
 #define M6809_ABI_VERSION_LATEST  (M6809_ABI_VERSION_BX)
 
 /* Allow $ in identifiers */
 #define DOLLARS_IN_IDENTIFIERS 1
 
 /*--------------------------------------------------------------
-	Target machine storage layout
+    Target machine storage layout
 --------------------------------------------------------------*/
 
 /* Define this if most significant bit is lowest numbered
@@ -148,27 +148,27 @@ extern unsigned int m6809_abi_version;
 #define STRICT_ALIGNMENT 0
 
 /*--------------------------------------------------------------
-	 Standard register usage.
+    Standard register usage.
 --------------------------------------------------------------*/
 
 /* Register values as bitmasks.
  * TODO : merge D_REGBIT and B_REGBIT, and treat this as the same
  * register. */
 #define RSVD1_REGBIT    (1 << HARD_RSVD1_REGNUM)
-#define D_REGBIT			(1 << HARD_D_REGNUM)
-#define X_REGBIT			(1 << HARD_X_REGNUM)
-#define Y_REGBIT			(1 << HARD_Y_REGNUM)
-#define U_REGBIT			(1 << HARD_U_REGNUM)
-#define S_REGBIT			(1 << HARD_S_REGNUM)
-#define PC_REGBIT			(1 << HARD_PC_REGNUM)
+#define D_REGBIT        (1 << HARD_D_REGNUM)
+#define X_REGBIT        (1 << HARD_X_REGNUM)
+#define Y_REGBIT        (1 << HARD_Y_REGNUM)
+#define U_REGBIT        (1 << HARD_U_REGNUM)
+#define S_REGBIT        (1 << HARD_S_REGNUM)
+#define PC_REGBIT       (1 << HARD_PC_REGNUM)
 #define Z_REGBIT        (1 << HARD_Z_REGNUM)
-#define A_REGBIT			(1 << HARD_A_REGNUM)
-#define B_REGBIT			(1 << HARD_B_REGNUM)
-#define CC_REGBIT			(1 << HARD_CC_REGNUM)
-#define DP_REGBIT			(1 << HARD_DP_REGNUM)
+#define A_REGBIT        (1 << HARD_A_REGNUM)
+#define B_REGBIT        (1 << HARD_B_REGNUM)
+#define CC_REGBIT       (1 << HARD_CC_REGNUM)
+#define DP_REGBIT       (1 << HARD_DP_REGNUM)
 #define SOFT_FP_REGBIT  (1 << SOFT_FP_REGNUM)
 #define SOFT_AP_REGBIT  (1 << SOFT_AP_REGNUM)
-#define M_REGBIT(n)		(1 << (SOFT_M0_REGNUM + n))
+#define M_REGBIT(n)     (1 << (SOFT_M0_REGNUM + n))
 
 /* Macros for dealing with set of registers.
  * A register set is just a bitwise-OR of all the register
@@ -176,12 +176,12 @@ extern unsigned int m6809_abi_version;
 
 /* Which registers can hold 8-bits */
 #define BYTE_REGSET \
-	(Z_REGBIT | A_REGBIT | D_REGBIT | CC_REGBIT | DP_REGBIT | SOFT_M_REGBITS)
+  (Z_REGBIT | A_REGBIT | B_REGBIT | D_REGBIT | CC_REGBIT | DP_REGBIT | SOFT_M_REGBITS)
 
 /* Which registers can hold 16-bits.
  * Note: D_REGBIT is defined as both an 8-bit and 16-bit register */
 #define WORD_REGSET \
-	(D_REGBIT | X_REGBIT | Y_REGBIT | U_REGBIT | S_REGBIT | PC_REGBIT | SOFT_FP_REGBIT | SOFT_AP_REGBIT | RSVD1_REGBIT)
+  (D_REGBIT | X_REGBIT | Y_REGBIT | U_REGBIT | S_REGBIT | PC_REGBIT | SOFT_FP_REGBIT | SOFT_AP_REGBIT)
 
 /* Returns nonzero if a given REGNO is in the REGSET. */
 #define REGSET_CONTAINS_P(regno, regset)  (((1 << (regno)) & (regset)) != 0)
@@ -232,12 +232,12 @@ extern unsigned int m6809_abi_version;
 
 /* Return number of consecutive hard regs needed starting at reg REGNO
    to hold something of mode MODE.
-	For the 6809, we distinguish between word-length and byte-length
-	registers. */
+   For the 6809, we distinguish between word-length and byte-length
+   registers. */
 #define HARD_REGNO_NREGS(REGNO, MODE) \
-   (REGSET_CONTAINS_P (REGNO, WORD_REGSET) ? \
-		((GET_MODE_SIZE (MODE) + UNITS_PER_WORD - 1) / UNITS_PER_WORD) : \
-      (GET_MODE_SIZE (MODE)))
+  (WORD_REGNO_P (REGNO) ? \
+    ((GET_MODE_SIZE (MODE) + UNITS_PER_WORD - 1) / UNITS_PER_WORD) : \
+    (GET_MODE_SIZE (MODE)))
 
 
 /* Value is 1 if hard register REGNO can hold a value
@@ -299,7 +299,7 @@ of machine-mode MODE. */
  * into a stack pointer reference.  This is based on the way that
  * the frame is constructed in the function prologue. */
 #define INITIAL_ELIMINATION_OFFSET(FROM, TO, OFFSET) \
-	(OFFSET) = m6809_initial_elimination_offset (FROM, TO)
+  (OFFSET) = m6809_initial_elimination_offset (FROM, TO)
 
 /* Base register for access to arguments of the function.
  * This is only used prior to reload; no instructions will ever
@@ -325,14 +325,14 @@ of machine-mode MODE. */
  * byte, and thus one extra cycle to execute.
  */
 #define REG_ALLOC_ORDER \
-   {  HARD_X_REGNUM, HARD_U_REGNUM, HARD_Y_REGNUM, HARD_D_REGNUM, \
-	   HARD_M_REGNUMS, HARD_S_REGNUM, HARD_PC_REGNUM, \
-		HARD_B_REGNUM, HARD_A_REGNUM, HARD_CC_REGNUM, \
-		HARD_DP_REGNUM, SOFT_FP_REGNUM, SOFT_AP_REGNUM, \
-		6, HARD_Z_REGNUM }
+ { HARD_X_REGNUM, HARD_U_REGNUM, HARD_Y_REGNUM, \
+   HARD_D_REGNUM, HARD_M_REGNUMS, HARD_S_REGNUM, \
+   HARD_PC_REGNUM, HARD_B_REGNUM, HARD_A_REGNUM, \
+   HARD_CC_REGNUM, HARD_DP_REGNUM, SOFT_FP_REGNUM, \
+   SOFT_AP_REGNUM, HARD_Z_REGNUM, HARD_RSVD1_REGNUM }
 
 /*--------------------------------------------------------------
-	classes of registers
+    classes of registers
 --------------------------------------------------------------*/
 
 /* Define the classes of registers for register constraints in the
@@ -360,16 +360,16 @@ enum reg_class {
     D_REGS,     /* 16-bit (word (HI)) data (D) */
     ACC_A_REGS, /* The A register */
     ACC_B_REGS, /* The B register */
-	 X_REGS,     /* The X register */
-	 Z_REGS,     /* The Z (zero-bit) register */
+    X_REGS,     /* The X register */
+    Z_REGS,     /* The Z (zero-bit) register */
     Q_REGS,     /* 8-bit (byte (QI)) data (A,B) */
     M_REGS,     /* 8-bit (byte (QI)) soft registers */
-	 CC_REGS,    /* 8-bit condition code register */
+    CC_REGS,    /* 8-bit condition code register */
     I_REGS,     /* An index register (A,B,D) */
     T_REGS,     /* 16-bit addresses, not including stack or PC (X,Y,U) */
     A_REGS,     /* 16-bit addresses (X,Y,U,S,PC) */
-	 S_REGS,     /* 16-bit soft registers (FP, AP) */
-	 P_REGS,     /* 16-bit pushable registers (D,X,Y,U); omit PC and S */
+    S_REGS,     /* 16-bit soft registers (FP, AP) */
+    P_REGS,     /* 16-bit pushable registers (D,X,Y,U); omit PC and S */
     G_REGS,     /* 16-bit data and address (D,X,Y,U,S,PC) */
     ALL_REGS,   /* All registers */
     LIM_REG_CLASSES
@@ -383,15 +383,15 @@ enum reg_class {
 
 /* Give names of register classes as strings for dump file.   */
 #define REG_CLASS_NAMES \
- {  "NO_REGS", "D_REGS", "ACC_A_REGS", "ACC_B_REGS", "X_REGS", "Z_REGS", "Q_REGS", "M_REGS", \
-	 "CC_REGS", "I_REGS", "T_REGS", "A_REGS", "S_REGS", "P_REGS", "G_REGS", \
-	 "ALL_REGS" }
+ { "NO_REGS", "D_REGS", "ACC_A_REGS", "ACC_B_REGS", "X_REGS", "Z_REGS", \
+   "Q_REGS", "M_REGS", "CC_REGS", "I_REGS", "T_REGS", "A_REGS", "S_REGS", \
+   "P_REGS", "G_REGS", "ALL_REGS" }
 
 /* Define which registers fit in which classes.
    This is an initializer for a vector of HARD_REG_SET
    of length N_REG_CLASSES.  */
 
-#define D_REGSET	(D_REGBIT)
+#define D_REGSET (D_REGBIT)
 #define ACC_A_REGSET (A_REGBIT)
 #define ACC_B_REGSET (D_REGBIT)
 #define X_REGSET (X_REGBIT)
@@ -405,26 +405,26 @@ enum reg_class {
 #define S_REGSET (SOFT_FP_REGBIT | SOFT_AP_REGBIT)
 #define P_REGSET (D_REGBIT | X_REGBIT | Y_REGBIT | U_REGBIT)
 #define G_REGSET \
-   (D_REGSET | Q_REGSET | I_REGSET | A_REGSET | M_REGSET | S_REGSET)
+  (D_REGSET | Q_REGSET | I_REGSET | A_REGSET | M_REGSET | S_REGSET)
 #define ALL_REGSET (G_REGSET)
 
 #define REG_CLASS_CONTENTS { \
-	{0}, \
-	{D_REGSET}, \
-   {ACC_A_REGSET}, \
-   {ACC_B_REGSET}, \
-   {X_REGSET}, \
-   {Z_REGSET}, \
-	{Q_REGSET}, \
-	{M_REGSET}, \
-   {CC_REGSET}, \
-	{I_REGSET}, \
-	{T_REGSET}, \
-	{A_REGSET}, \
-	{S_REGSET}, \
-	{P_REGSET}, \
-	{G_REGSET}, \
-	{ALL_REGSET}, \
+  {0}, \
+  {D_REGSET}, \
+  {ACC_A_REGSET}, \
+  {ACC_B_REGSET}, \
+  {X_REGSET}, \
+  {Z_REGSET}, \
+  {Q_REGSET}, \
+  {M_REGSET}, \
+  {CC_REGSET}, \
+  {I_REGSET}, \
+  {T_REGSET}, \
+  {A_REGSET}, \
+  {S_REGSET}, \
+  {P_REGSET}, \
+  {G_REGSET}, \
+  {ALL_REGSET}, \
 }
 
 /* The same information, inverted.
@@ -482,25 +482,28 @@ enum reg_class {
 /* Redefine this in terms of BYTE_REGSET */
 #define BYTE_REGNO_P(REGNO) (REGSET_CONTAINS_P (REGNO, BYTE_REGSET))
 
+/* Redefine this in terms of WORD_REGSET */
+#define WORD_REGNO_P(REGNO) (REGSET_CONTAINS_P (REGNO, WORD_REGSET))
+
 /* The class value for index registers, and the one for base regs.  */
 #define INDEX_REG_CLASS I_REGS
 #define BASE_REG_CLASS A_REGS
 
 /* Get reg_class from a letter in the machine description.  */
 #define REG_CLASS_FROM_LETTER(C) \
-  (((C) == 'a' ? A_REGS : \
-   ((C) == 'd' ? D_REGS : \
-	((C) == 'x' ? I_REGS : \
-	((C) == 't' ? M_REGS : \
-	((C) == 'c' ? CC_REGS : \
-	((C) == 'A' ? ACC_A_REGS : \
-	((C) == 'B' ? ACC_B_REGS : \
-	((C) == 'v' ? X_REGS : \
-	((C) == 'u' ? S_REGS : \
-	((C) == 'U' ? P_REGS : \
-	((C) == 'T' ? T_REGS : \
-	((C) == 'z' ? Z_REGS : \
-   ((C) == 'q' ? Q_REGS : NO_REGS))))))))))))))
+ (((C) == 'a' ? A_REGS : \
+  ((C) == 'd' ? D_REGS : \
+  ((C) == 'x' ? I_REGS : \
+  ((C) == 't' ? M_REGS : \
+  ((C) == 'c' ? CC_REGS : \
+  ((C) == 'A' ? ACC_A_REGS : \
+  ((C) == 'B' ? ACC_B_REGS : \
+  ((C) == 'v' ? X_REGS : \
+  ((C) == 'u' ? S_REGS : \
+  ((C) == 'U' ? P_REGS : \
+  ((C) == 'T' ? T_REGS : \
+  ((C) == 'z' ? Z_REGS : \
+  ((C) == 'q' ? Q_REGS : NO_REGS))))))))))))))
 
 /*--------------------------------------------------------------
    The letters I through O in a register constraint string
@@ -548,7 +551,7 @@ enum reg_class {
     ((GET_MODE_SIZE (MODE) + UNITS_PER_WORD - 1) / UNITS_PER_WORD)
 
 /*--------------------------------------------------------------
-	Stack layout; function entry, exit and calling.
+    Stack layout; function entry, exit and calling.
 --------------------------------------------------------------*/
 
 /* Define this if pushing a word on the stack
@@ -610,12 +613,12 @@ enum reg_class {
 
 /* 1 if N is a possible register number for function argument passing. */
 #define FUNCTION_ARG_REGNO_P(N) \
-	((m6809_abi_version != M6809_ABI_VERSION_STACK) ? \
-   	(((N) == HARD_D_REGNUM) || ((N) == HARD_X_REGNUM)) : \
-		0)
+  ((m6809_abi_version != M6809_ABI_VERSION_STACK) ? \
+    (((N) == HARD_D_REGNUM) || ((N) == HARD_X_REGNUM)) : \
+    0)
 
 /*--------------------------------------------------------------
-	Argument Lists
+    Argument Lists
 --------------------------------------------------------------*/
 
 /* Cumulative arguments are tracked in a single integer, 
@@ -631,54 +634,60 @@ enum reg_class {
 #define CUM_STACK_MASK 0xFFFFFFF
 
 #define CUM_ADVANCE_8BIT(cum) \
-	(((cum) & CUM_B_MASK) ? (cum)++ : ((cum) |= CUM_B_MASK))
+  (((cum) & CUM_B_MASK) ? (cum)++ : ((cum) |= CUM_B_MASK))
 
 #define CUM_ADVANCE_16BIT(cum) \
-	(((cum) & CUM_X_MASK) ? (cum) += 2 : ((cum) |= CUM_X_MASK))
+  (((cum) & CUM_X_MASK) ? (cum) += 2 : ((cum) |= CUM_X_MASK))
 
 /* Initialize a variable CUM of type CUMULATIVE_ARGS
    for a call to a function whose data type is FNTYPE.
    For a library call, FNTYPE is 0.
-	N_NAMED was added in gcc 3.4 and is not used currently. */
+   N_NAMED was added in gcc 3.4 and is not used currently. */
 #define INIT_CUMULATIVE_ARGS(CUM,FNTYPE,LIBNAME,INDIRECT,N_NAMED) \
-	((CUM) = m6809_init_cumulative_args (CUM, FNTYPE, LIBNAME))
+  ((CUM) = m6809_init_cumulative_args (CUM, FNTYPE, LIBNAME))
 
-#define FUNCTION_ARG_SIZE(MODE, TYPE)	\
-  ((MODE) != BLKmode ? GET_MODE_SIZE (MODE)	\
-   : (unsigned) int_size_in_bytes (TYPE))
+#define FUNCTION_ARG_SIZE(MODE, TYPE) \
+  ((MODE) != BLKmode ? \
+    GET_MODE_SIZE (MODE) : \
+    (unsigned) int_size_in_bytes (TYPE))
 
 /* Update the data in CUM to advance over an argument
    of mode MODE and data type TYPE.
    (TYPE is null for libcalls where that information may not be available.)  */
 #define FUNCTION_ARG_ADVANCE(CUM, MODE, TYPE, NAMED) \
-	 (((MODE == QImode) && !((CUM) & CUM_STACK_ONLY)) ? \
-		CUM_ADVANCE_8BIT (CUM) : \
-	  ((MODE == HImode) && !((CUM) & CUM_STACK_ONLY)) ? \
-		CUM_ADVANCE_16BIT (CUM) : \
-	  ((CUM) = ((CUM) + (TYPE ? int_size_in_bytes (TYPE) : 2))))
+  (((MODE == QImode) && !((CUM) & CUM_STACK_ONLY)) ? \
+    CUM_ADVANCE_8BIT (CUM) : \
+    ((MODE == HImode) && !((CUM) & CUM_STACK_ONLY)) ? \
+      CUM_ADVANCE_16BIT (CUM) : \
+      ((CUM) = ((CUM) + (TYPE ? \
+        int_size_in_bytes (TYPE) : \
+        2))))
 
 /* Define where to put the arguments to a function.
    Value is zero to push the argument on the stack,
    or a hard register rtx in which to store the argument.
-	This macro is used _before_ FUNCTION_ARG_ADVANCE.
+   This macro is used _before_ FUNCTION_ARG_ADVANCE.
 
-	For the 6809, the first 8-bit function argument can be placed into B,
-	and the first 16-bit arg can go into X.  All other arguments
-	will be pushed onto the stack.
+   For the 6809, the first 8-bit function argument can be placed into B,
+   and the first 16-bit arg can go into X.  All other arguments
+   will be pushed onto the stack.
 
-	Command-line options can adjust this behavior somewhat.
+   Command-line options can adjust this behavior somewhat.
  */
 #define FUNCTION_ARG(CUM, MODE, TYPE, NAMED) \
-	((MODE == VOIDmode) ? NULL_RTX : \
-	((MODE == BLKmode) || (GET_MODE_SIZE (MODE) > 2)) ? NULL_RTX : \
-	((MODE == QImode) && !((CUM) & (CUM_STACK_ONLY | CUM_B_MASK))) ? \
-		gen_rtx_REG (QImode, HARD_D_REGNUM) : \
-	((MODE == HImode) && !((CUM) & (CUM_STACK_ONLY | CUM_X_MASK))) ?  \
-		gen_rtx_REG (HImode, HARD_X_REGNUM) : m6809_function_arg_on_stack (&CUM))
+  ((MODE == VOIDmode) ? \
+    NULL_RTX : \
+    ((MODE == BLKmode) || (GET_MODE_SIZE (MODE) > 2)) ? \
+      NULL_RTX : \
+      ((MODE == QImode) && !((CUM) & (CUM_STACK_ONLY | CUM_B_MASK))) ? \
+        gen_rtx_REG (QImode, HARD_D_REGNUM) : \
+        ((MODE == HImode) && !((CUM) & (CUM_STACK_ONLY | CUM_X_MASK))) ? \
+          gen_rtx_REG (HImode, HARD_X_REGNUM) : \
+          m6809_function_arg_on_stack (&CUM))
 
 /* Output assembler code to FILE to profile function entry.
    We do not require a label, so say NO_PROFILE_COUNTERS and don't
-	use LABELNO. */
+   use LABELNO. */
 #define NO_PROFILE_COUNTERS 1
 
 #define FUNCTION_PROFILER(FILE, LABELNO) fprintf (FILE, "\tjsr\t_mcount\n")
@@ -697,8 +706,8 @@ enum reg_class {
 
 /* A template for the trampoline before addresses are known. */
 #define TRAMPOLINE_TEMPLATE(FILE) \
-	fprintf (FILE, "ldy #0000\n"); \
-	fprintf (FILE, "jmp 0x0000\n");
+  fprintf (FILE, "\tldy\t#0\n"); \
+  fprintf (FILE, "\tjmp\t0\n");
 
 /* A C statement to initialize the variable parts of a trampoline.
    ADDR is an RTX for the address of the trampoline; FNADDR is an
@@ -706,12 +715,12 @@ enum reg_class {
    RTX for the static chain value that should be passed to the
    function when it is called.  */
 #define INITIALIZE_TRAMPOLINE(TRAMP, FNADDR, CXT) \
-	m6809_initialize_trampoline((TRAMP), (FNADDR), (CXT))
+  m6809_initialize_trampoline((TRAMP), (FNADDR), (CXT))
 
 
 /*--------------------------------------------------------------
-	Addressing modes,
-	and classification of registers for them.
+    Addressing modes,
+    and classification of registers for them.
 --------------------------------------------------------------*/
 
 /* 6809 has postincrement and predecrement addressing modes */
@@ -726,43 +735,45 @@ enum reg_class {
 
 /* Macros to check register numbers against specific register classes.  */
 #define REG_VALID_FOR_BASE_P(REGNO) \
-	(((REGNO) < FIRST_PSEUDO_REGISTER) && A_REGNO_P (REGNO))
+  (((REGNO) < FIRST_PSEUDO_REGISTER) && A_REGNO_P (REGNO))
 
 /* MC6809 index registers do not allow scaling, */
 /* but there is "accumulator-offset" mode. */
 #ifdef USE_INDEX_REGISTERS
 #define REG_VALID_FOR_INDEX_P(REGNO) \
-	(((REGNO) < FIRST_PSEUDO_REGISTER) && I_REGNO_P (REGNO))
+  (((REGNO) < FIRST_PSEUDO_REGISTER) && I_REGNO_P (REGNO))
 #else
 #define REG_VALID_FOR_INDEX_P(REGNO) 0
 #endif
 
 /* Internal macro, the nonstrict definition for REGNO_OK_FOR_BASE_P */
 #define REGNO_OK_FOR_BASE_NONSTRICT_P(REGNO) \
-   ((REGNO) >= FIRST_PSEUDO_REGISTER \
-	|| REG_VALID_FOR_BASE_P (REGNO) \
-	|| (REGNO) == FRAME_POINTER_REGNUM \
-	|| (REGNO) == HARD_FRAME_POINTER_REGNUM \
-	|| (REGNO) == ARG_POINTER_REGNUM \
-	|| (reg_renumber && REG_VALID_FOR_BASE_P (reg_renumber[REGNO])))
+  ((REGNO) >= FIRST_PSEUDO_REGISTER \
+   || REG_VALID_FOR_BASE_P (REGNO) \
+   || (REGNO) == FRAME_POINTER_REGNUM \
+   || (REGNO) == HARD_FRAME_POINTER_REGNUM \
+   || (REGNO) == ARG_POINTER_REGNUM \
+   || (reg_renumber && REG_VALID_FOR_BASE_P (reg_renumber[REGNO])))
 
 /* Internal macro, the nonstrict definition for REGNO_OK_FOR_INDEX_P */
 #define REGNO_OK_FOR_INDEX_NONSTRICT_P(REGNO) \
-   ((REGNO) >= FIRST_PSEUDO_REGISTER \
-	|| REG_VALID_FOR_INDEX_P (REGNO) \
-	|| (reg_renumber && REG_VALID_FOR_INDEX_P (reg_renumber[REGNO])))
+  ((REGNO) >= FIRST_PSEUDO_REGISTER \
+   || REG_VALID_FOR_INDEX_P (REGNO) \
+   || (reg_renumber && REG_VALID_FOR_INDEX_P (reg_renumber[REGNO])))
 
 
 /* Internal macro, the strict definition for REGNO_OK_FOR_BASE_P */
 #define REGNO_OK_FOR_BASE_STRICT_P(REGNO) \
-	((REGNO) < FIRST_PSEUDO_REGISTER ? REG_VALID_FOR_BASE_P (REGNO) \
-	: (reg_renumber && REG_VALID_FOR_BASE_P (reg_renumber[REGNO])))
+  ((REGNO) < FIRST_PSEUDO_REGISTER ? \
+    REG_VALID_FOR_BASE_P (REGNO) : \
+    (reg_renumber && REG_VALID_FOR_BASE_P (reg_renumber[REGNO])))
 
 
 /* Internal macro, the strict definition for REGNO_OK_FOR_INDEX_P */
 #define REGNO_OK_FOR_INDEX_STRICT_P(REGNO) \
-	((REGNO) < FIRST_PSEUDO_REGISTER ? REG_VALID_FOR_INDEX_P (REGNO) \
-	: (reg_renumber && REG_VALID_FOR_INDEX_P (reg_renumber[REGNO])))
+  ((REGNO) < FIRST_PSEUDO_REGISTER ? \
+    REG_VALID_FOR_INDEX_P (REGNO) : \
+    (reg_renumber && REG_VALID_FOR_INDEX_P (reg_renumber[REGNO])))
 
 
 #define REGNO_OK_FOR_BASE_P(REGNO) REGNO_OK_FOR_BASE_STRICT_P (REGNO)
@@ -801,9 +812,9 @@ enum reg_class {
  * We allow any constant, plus the sum of any two constants (this allows
  * offsetting a symbol ref) */
 #define CONSTANT_ADDRESS_P(X) \
-	((CONSTANT_P (X)) \
-	|| ((GET_CODE (X) == PLUS) \
-	      && (CONSTANT_P (XEXP (X, 0))) && (CONSTANT_P (XEXP (X, 1)))))
+  ((CONSTANT_P (X)) \
+   || ((GET_CODE (X) == PLUS) \
+       && (CONSTANT_P (XEXP (X, 0))) && (CONSTANT_P (XEXP (X, 1)))))
 
 /* Nonzero if the constant value X is a legitimate general operand.
    It is given that X satisfies CONSTANT_P or is a CONST_DOUBLE.  */
@@ -812,10 +823,10 @@ enum reg_class {
 #define LEGITIMATE_CONSTANT_P(X) (GET_CODE (X) != CONST_DOUBLE)
 
 /* Nonzero if the X is a legitimate immediate operand in PIC mode. */
-#define LEGITIMATE_PIC_OPERAND_P(X)	!symbolic_operand (X, VOIDmode)
+#define LEGITIMATE_PIC_OPERAND_P(X) !symbolic_operand (X, VOIDmode)
 
 /*--------------------------------------------------------------
-	Test for valid memory addresses
+    Test for valid memory addresses
 --------------------------------------------------------------*/
 /* GO_IF_LEGITIMATE_ADDRESS recognizes an RTL expression
    that is a valid memory address for an instruction.
@@ -825,33 +836,33 @@ enum reg_class {
 /*--------------------------------------------------------------
    Valid addresses are either direct or indirect (MEM) versions
    of the following forms.
-	constant		N
-	register		,X
-	constant indexed	N,X
-	accumulator indexed	D,X
-	auto_increment		,X++
-	auto_decrement		,--X
+      constant              N
+      register              ,X
+      constant indexed      N,X
+      accumulator indexed   D,X
+      auto_increment        ,X++
+      auto_decrement        ,--X
 --------------------------------------------------------------*/
 
 #define REGISTER_ADDRESS_P(X) \
   (REG_P (X) && REG_OK_FOR_BASE_P (X))
 
 #define EXTENDED_ADDRESS_P(X) \
-    CONSTANT_ADDRESS_P (X) \
+  CONSTANT_ADDRESS_P (X) \
 
 #define LEGITIMATE_BASE_P(X) \
-  ((REG_P (X) && REG_OK_FOR_BASE_P (X))	\
-   || (GET_CODE (X) == SIGN_EXTEND			\
-       && GET_CODE (XEXP (X, 0)) == REG			\
-       && GET_MODE (XEXP (X, 0)) == HImode		\
+  ((REG_P (X) && REG_OK_FOR_BASE_P (X)) \
+   || (GET_CODE (X) == SIGN_EXTEND \
+       && GET_CODE (XEXP (X, 0)) == REG \
+       && GET_MODE (XEXP (X, 0)) == HImode \
        && REG_OK_FOR_BASE_P (XEXP (X, 0))))
 
 #define LEGITIMATE_OFFSET_P(X) \
-    (CONSTANT_ADDRESS_P (X) || (REG_P (X) && REG_OK_FOR_INDEX_P (X)))
+  (CONSTANT_ADDRESS_P (X) || (REG_P (X) && REG_OK_FOR_INDEX_P (X)))
 
 /* 1 if X is the sum of a base register and an offset. */
 #define INDEXED_ADDRESS(X) \
-   ((GET_CODE (X) == PLUS \
+  ((GET_CODE (X) == PLUS \
        && LEGITIMATE_BASE_P (XEXP (X, 0)) \
        && LEGITIMATE_OFFSET_P (XEXP (X, 1))) \
    || (GET_CODE (X) == PLUS \
@@ -861,14 +872,14 @@ enum reg_class {
 #define STACK_REG_P(X) (REG_P(X) && REGNO(X) == HARD_S_REGNUM)
 
 #define STACK_PUSH_P(X) \
-   (MEM_P (X) && GET_CODE (XEXP (X, 0)) == PRE_DEC && STACK_REG_P (XEXP (XEXP (X, 0), 0)))
+  (MEM_P (X) && GET_CODE (XEXP (X, 0)) == PRE_DEC && STACK_REG_P (XEXP (XEXP (X, 0), 0)))
 
 #define STACK_POP_P(X) \
-   (MEM_P (X) && GET_CODE (XEXP (X, 0)) == POST_INC && STACK_REG_P (XEXP (XEXP (X, 0), 0)))
+  (MEM_P (X) && GET_CODE (XEXP (X, 0)) == POST_INC && STACK_REG_P (XEXP (XEXP (X, 0), 0)))
 
 #define PUSH_POP_ADDRESS_P(X) \
-    (((GET_CODE (X) == PRE_DEC) || (GET_CODE (X) == POST_INC)) \
-	&& (LEGITIMATE_BASE_P (XEXP (X, 0))))
+  (((GET_CODE (X) == PRE_DEC) || (GET_CODE (X) == POST_INC)) \
+    && (LEGITIMATE_BASE_P (XEXP (X, 0))))
 
 /* Go to ADDR if X is a valid address. */
 #define GO_IF_LEGITIMATE_ADDRESS(MODE, X, ADDR) \
@@ -884,7 +895,7 @@ enum reg_class {
 }
 
 /*--------------------------------------------------------------
-	Address Fix-up
+    Address Fix-up
 --------------------------------------------------------------*/
 /* Try machine-dependent ways of modifying an illegitimate address
    to be legitimate.  If we find one, return the new, valid address.
@@ -904,13 +915,13 @@ enum reg_class {
 
 /* Go to LABEL if ADDR (a legitimate address expression)
    has an effect that depends on the machine mode it is used for.
-	In the latest GCC, this case is already handled by the core code
-	so no action is required here. */
+   In the latest GCC, this case is already handled by the core code
+   so no action is required here. */
 #define GO_IF_MODE_DEPENDENT_ADDRESS(ADDR,LABEL) {}
 
 
 /*--------------------------------------------------------------
-	Miscellaneous Parameters
+    Miscellaneous Parameters
 --------------------------------------------------------------*/
 /* Specify the machine mode that this machine uses
    for the index in the tablejump instruction.  */
@@ -994,7 +1005,7 @@ enum reg_class {
  * On the 6809, hard register transfers are all basically equivalent.
  * But soft register moves are treated more like memory moves. */
 #define REGISTER_MOVE_COST(MODE, CLASS1, CLASS2) \
-	(((CLASS1 == M_REGS) || (CLASS2 == M_REGS)) ? 4 : 7)
+  (((CLASS1 == M_REGS) || (CLASS2 == M_REGS)) ? 4 : 7)
 
 /* Define the cost of moving a value between a register and memory. */
 #define MEMORY_MOVE_COST(MODE, CLASS, IN) 5
@@ -1006,7 +1017,7 @@ enum reg_class {
 
 
 /*--------------------------------------------------------------
-	machine-dependent
+    machine-dependent
 --------------------------------------------------------------*/
 /* Tell final.c how to eliminate redundant test instructions.  */
 
@@ -1033,13 +1044,13 @@ enum reg_class {
 *****************************************************************************/
 
 #define REGISTER_TARGET_PRAGMAS() \
-do { \
-	extern void pragma_section PARAMS ((cpp_reader *)); \
-	c_register_pragma (0, "section", pragma_section); \
-} while (0)
+  do { \
+    extern void pragma_section PARAMS ((cpp_reader *)); \
+    c_register_pragma (0, "section", pragma_section); \
+  } while (0)
 
 /*--------------------------------------------------------------
-	ASSEMBLER FORMAT
+    ASSEMBLER FORMAT
 --------------------------------------------------------------*/
 
 #define FMT_HOST_WIDE_INT "%ld"
@@ -1053,11 +1064,11 @@ do { \
 #define ASM_APP_OFF ";--- end asm ---\n"
 
 /* Use a semicolon to begin a comment. */
-#define ASM_COMMENT_START "; "
+#define ASM_COMMENT_START ";"
 
 /* Output assembly directives to switch to section 'name' */
 #undef TARGET_ASM_NAMED_SECTION
-#define TARGET_ASM_NAMED_SECTION	m6809_asm_named_section
+#define TARGET_ASM_NAMED_SECTION m6809_asm_named_section
 
 #undef TARGET_HAVE_NAMED_SECTION
 #define TARGET_HAVE_NAMED_SECTION m6809_have_named_section
@@ -1074,10 +1085,12 @@ do { \
 /* Support the ctors and dtors sections for g++.  */
  
 #undef CTORS_SECTION_ASM_OP
-#define CTORS_SECTION_ASM_OP    "\t.area .ctors"
+#define CTORS_SECTION_ASM_OP "\t.area\t.ctors"
 #undef DTORS_SECTION_ASM_OP
-#define DTORS_SECTION_ASM_OP    "\t.area .dtors"
+#define DTORS_SECTION_ASM_OP "\t.area\t.dtors"
 
+/* Prevent generation of __CTOR_LIST__ and __DTOR_LIST__ */
+#define CTOR_LISTS_DEFINED_EXTERNALLY
 
 #undef DO_GLOBAL_CTORS_BODY
 #undef DO_GLOBAL_DTORS_BODY
@@ -1090,42 +1103,39 @@ do { \
 
 #define ASM_OUTPUT_ALIGN(FILE,LOG) \
   if ((LOG) > 1) \
-    fprintf (FILE, "\t.bndry %u\n", 1 << (LOG))
+    fprintf (FILE, "\t.bndry\t%u\n", 1 << (LOG))
 
 /* The .set foo,bar construct doesn't work by default */
 #undef SET_ASM_OP
-#define ASM_OUTPUT_DEF(FILE, LABEL1, LABEL2)			\
-  do								\
-    {								\
-      fputc ('\t', FILE);					\
-      assemble_name (FILE, LABEL1);				\
-      fputs (" = ", FILE);					\
-      assemble_name (FILE, LABEL2);				\
-      fputc ('\n', FILE);					\
-    }								\
-  while (0)
+#define ASM_OUTPUT_DEF(FILE, LABEL1, LABEL2) \
+  do { \
+    assemble_name (FILE, LABEL1); \
+    fputs ("\t.equ\t", FILE); \
+    assemble_name (FILE, LABEL2); \
+    fputc ('\n', FILE); \
+  } while (0)
 
 /* How to refer to registers in assembler output.
    This sequence is indexed by compiler's hard-register-number (see above).  */
 #define MNAME(x) [SOFT_M0_REGNUM+(x)] = "*m" C_STRING(x) ,
 
 #define REGISTER_NAMES { \
-	[HARD_D_REGNUM]= "d", \
-	[HARD_X_REGNUM]= "x", \
-	[HARD_Y_REGNUM]= "y", \
-	[HARD_U_REGNUM]= "u", \
-	[HARD_S_REGNUM]= "s", \
-	[HARD_PC_REGNUM]= "pc", \
-	[HARD_A_REGNUM]= "a", \
-	[HARD_B_REGNUM]= "b", \
-	[HARD_CC_REGNUM]= "cc",\
-	[HARD_DP_REGNUM]= "dp", \
-	[SOFT_FP_REGNUM]= "soft_fp", \
-	[SOFT_AP_REGNUM]= "soft_ap", \
-	MNAME(0) MNAME(1) MNAME(2) MNAME(3) \
-	MNAME(4) MNAME(5) MNAME(6) MNAME(7) \
-	[HARD_RSVD1_REGNUM] = "-", \
-	[HARD_Z_REGNUM] = "z" /* bit 2 of CC */ }
+  [HARD_D_REGNUM]= "d", \
+  [HARD_X_REGNUM]= "x", \
+  [HARD_Y_REGNUM]= "y", \
+  [HARD_U_REGNUM]= "u", \
+  [HARD_S_REGNUM]= "s", \
+  [HARD_PC_REGNUM]= "pc", \
+  [HARD_A_REGNUM]= "a", \
+  [HARD_B_REGNUM]= "b", \
+  [HARD_CC_REGNUM]= "cc",\
+  [HARD_DP_REGNUM]= "dp", \
+  [SOFT_FP_REGNUM]= "soft_fp", \
+  [SOFT_AP_REGNUM]= "soft_ap", \
+  MNAME(0) MNAME(1) MNAME(2) MNAME(3) \
+  MNAME(4) MNAME(5) MNAME(6) MNAME(7) \
+  [HARD_RSVD1_REGNUM] = "-", \
+  [HARD_Z_REGNUM] = "z" /* bit 2 of CC */ }
 
 /*****************************************************************************
 **
@@ -1147,19 +1157,19 @@ do { \
 #define DBX_CONTIN_LENGTH 54
 
 #define DBX_OUTPUT_MAIN_SOURCE_FILENAME(ASMFILE, FILENAME) \
-do { \
-	const char *p = FILENAME; \
-	while ((p = strchr (p, '/')) != NULL) { \
-		p = FILENAME = p+1; \
-	} \
-  fprintf (ASMFILE, "%s", ASM_STABS_OP); \
-  output_quoted_string (ASMFILE, FILENAME); \
-  fprintf (ASMFILE, ",%d,0,0,", N_SO); \
-  assemble_name (ASMFILE, ltext_label_name); \
-  fputc ('\n', ASMFILE); \
-  switch_to_section (text_section); \
-  (*targetm.asm_out.internal_label) (ASMFILE, "Ltext", 0); \
-} while (0)
+  do { \
+    const char *p = FILENAME; \
+    while ((p = strchr (p, '/')) != NULL) { \
+      p = FILENAME = p+1; \
+    } \
+    fprintf (ASMFILE, "%s", ASM_STABS_OP); \
+    output_quoted_string (ASMFILE, FILENAME); \
+    fprintf (ASMFILE, ",%d,0,0,", N_SO); \
+    assemble_name (ASMFILE, ltext_label_name); \
+    fputc ('\n', ASMFILE); \
+    switch_to_section (text_section); \
+    (*targetm.asm_out.internal_label) (ASMFILE, "Ltext", 0); \
+  } while (0)
 
 /* With -g, GCC sometimes outputs string literals that are longer than
  * the assembler can handle.  Without actual debug support, these are
@@ -1192,25 +1202,25 @@ do { \
    such as the label on a static function or variable NAME.  */
 
 #define ASM_OUTPUT_LABEL(FILE,NAME) \
-do { \
-  if (section_changed) { \
-	  fprintf (FILE, "\n%s\n\n", code_section_op); \
-     section_changed = 0; \
-  } \
-  assemble_name (FILE, NAME); \
-  fputs (":\n", FILE); \
-} while (0)
+  do { \
+    if (section_changed) { \
+      fprintf (FILE, "\n%s\n\n", code_section_op); \
+      section_changed = 0; \
+    } \
+    assemble_name (FILE, NAME); \
+    fputs (":\n", FILE); \
+  } while (0)
 
 /* This is how to output the label for a function definition.  It
    invokes ASM_OUTPUT_LABEL, but may examine the DECL tree node for
-	other properties. */
+   other properties. */
 #define ASM_DECLARE_FUNCTION_NAME(FILE,NAME,DECL) \
   m6809_declare_function_name (FILE,NAME,DECL)
 
 /* This is how to output a command to make the user-level label
-    named NAME defined for reference from other files.  */
+   named NAME defined for reference from other files. */
 
-#define GLOBAL_ASM_OP "\t.globl "
+#define GLOBAL_ASM_OP "\t.globl\t"
 
 /* This is how to output a reference to a user label named NAME. */
 #define ASM_OUTPUT_LABELREF(FILE,NAME) \
@@ -1219,10 +1229,10 @@ do { \
 /* This is how to output a reference to a symbol ref
  * Check to see if the symbol is in the direct page */
 #define ASM_OUTPUT_SYMBOL_REF(FILE,sym) \
-{ \
-	print_direct_prefix (FILE, sym); \
-	assemble_name (FILE, XSTR (sym, 0)); \
-}
+  { \
+    print_direct_prefix (FILE, sym); \
+    assemble_name (FILE, XSTR (sym, 0)); \
+  }
 
 /* External references aren't necessary, so don't emit anything */
 #define ASM_OUTPUT_EXTERNAL(FILE,DECL,NAME)
@@ -1234,18 +1244,6 @@ do { \
 #define ASM_GENERATE_INTERNAL_LABEL(LABEL,PREFIX,NUM) \
   sprintf (LABEL, "*%s%lu", PREFIX, (unsigned long int)NUM)
 
-/* This is how to output an assembler line defining an `int' constant.  */
-#define ASM_OUTPUT_INT(FILE,VALUE) \
-( fprintf (FILE, "\t.word "), \
-  output_addr_const (FILE, (VALUE)), \
-  fprintf (FILE, "\n"))
-
-/* Likewise for `char' and `short' constants.  */
-#define ASM_OUTPUT_SHORT(FILE,VALUE) \
-( fprintf (FILE, "\t.word "), \
-  output_addr_const (FILE, (VALUE)), \
-  fprintf (FILE, "\n"))
-
 /* This is how to output a string. */ 
 #define ASM_OUTPUT_ASCII(FILE,STR,SIZE) m6809_output_ascii (FILE, STR, SIZE)
 
@@ -1253,23 +1251,23 @@ do { \
    It need not be very fast code.  */
 
 #define ASM_OUTPUT_REG_PUSH(FILE,REGNO) \
-   fprintf (FILE, "\tpshs\t%s\n", reg_names[REGNO])
+  fprintf (FILE, "\tpshs\t%s\n", reg_names[REGNO])
 
 /* This is how to output an insn to pop a register from the stack.
    It need not be very fast code.  */
 
 #define ASM_OUTPUT_REG_POP(FILE,REGNO) \
-   fprintf (FILE, "\tpuls\t%s\n", reg_names[REGNO])
+  fprintf (FILE, "\tpuls\t%s\n", reg_names[REGNO])
 
 /* This is how to output an element of a case-vector that is absolute. */
 
 #define ASM_OUTPUT_ADDR_VEC_ELT(FILE, VALUE) \
-  fprintf (FILE, "\t.word L%u\n", VALUE)
+  fprintf (FILE, "\t.word\tL%u\n", VALUE)
 
 /* This is how to output an element of a case-vector that is relative. */
 
 #define ASM_OUTPUT_ADDR_DIFF_ELT(FILE, BODY, VALUE, REL) \
-  fprintf (FILE, "\t.word L%u-L%u\n", VALUE, REL)
+  fprintf (FILE, "\t.word\tL%u-L%u\n", VALUE, REL)
 
 
 /*****************************************************************************
@@ -1282,19 +1280,21 @@ do { \
  * So use the .byte and .word directives instead of .blkb */
 #define ASM_OUTPUT_SKIP(FILE,SIZE) \
   do { \
-    int __size = SIZE; \
-    while (__size > 0) { \
-      if (__size >= 2) \
-      { \
-        fprintf (FILE, "\t.word\t0\t;skip space %d\n", __size); \
-        __size -= 2; \
+    int __size = SIZE, __i; \
+    for (__i = 0; __i < (__size&-2); __i += 2) { \
+      if (!(__i&31)) { \
+        if (__i) \
+          putc ('\n', FILE); \
+        fputs ("\t.word\t", FILE); \
       } \
       else \
-      { \
-        fprintf (FILE, "\t.byte\t0\t;skip space\n"); \
-        __size--; \
-      } \
+        putc (',', FILE); \
+      putc ('0', FILE); \
     } \
+    if (__i) \
+      putc ('\n', FILE); \
+    if (__size&1) \
+      fputs ("\t.byte\t0\n", FILE); \
   } while (0)
 
 /* This says how to output an assembler line
@@ -1302,28 +1302,30 @@ do { \
 
 #define ASM_OUTPUT_COMMON(FILE, NAME, SIZE, ROUNDED) \
   do { \
-  switch_to_section (bss_section); \
-  fputs ("\t.globl\t", FILE); \
-  assemble_name ((FILE), (NAME)); \
-  fputs ("\n", FILE); \
-  assemble_name ((FILE), (NAME)); \
-  fprintf ((FILE), ":\t.blkb\t" FMT_HOST_WIDE_INT "\n", (ROUNDED));} while(0)
+    switch_to_section (bss_section); \
+    fputs ("\t.globl\t", FILE); \
+    assemble_name ((FILE), (NAME)); \
+    fputc ('\n', FILE); \
+    assemble_name ((FILE), (NAME)); \
+    fprintf ((FILE), ":\t.blkb\t" FMT_HOST_WIDE_INT "\n", (ROUNDED)); \
+  } while (0)
 
 /* This says how to output an assembler line
    to define a local common symbol.  */
 
 #define ASM_OUTPUT_LOCAL(FILE, NAME, SIZE, ROUNDED) \
-do { \
-  switch_to_section (bss_section); \
-  assemble_name ((FILE), (NAME)); \
-  fprintf ((FILE), ":\t.blkb\t" FMT_HOST_WIDE_INT "\n", (ROUNDED));} while(0)
+  do { \
+    switch_to_section (bss_section); \
+    assemble_name ((FILE), (NAME)); \
+    fprintf ((FILE), ":\t.blkb\t" FMT_HOST_WIDE_INT "\n", (ROUNDED)); \
+  } while (0)
 
 /* Store in OUTPUT a string (made with alloca) containing
    an assembler-name for a local static variable named NAME.
    LABELNO is an integer which is different for each call.  */
 
 #define ASM_FORMAT_PRIVATE_NAME(OUTPUT, NAME, LABELNO) \
-( (OUTPUT) = (char *) alloca (strlen ((NAME)) + 10), \
+  ( (OUTPUT) = (char *) alloca (strlen ((NAME)) + 1 + sizeof(unsigned long int)*3 + 1), \
   sprintf ((OUTPUT), "%s.%lu", (NAME), (unsigned long int)(LABELNO)))
 
 /* Print an instruction operand X on file FILE.
@@ -1332,7 +1334,7 @@ do { \
 #define PRINT_OPERAND(FILE, X, CODE) print_operand (FILE, X, CODE)
 
 /* Print a memory operand whose address is X, on file FILE. */
-#define PRINT_OPERAND_ADDRESS(FILE, ADDR) print_operand_address (FILE, ADDR)
+#define PRINT_OPERAND_ADDRESS(FILE, ADDR) print_operand_address (FILE, ADDR, NULL_RTX)
 
 /* Don't let stack pushes build up too much. */
 #define MAX_PENDING_STACK 8
@@ -1340,15 +1342,16 @@ do { \
 /* Define values for builtin operations */
 enum m6809_builtins
 {
-	M6809_SWI,
-	M6809_SWI2,
-	M6809_SWI3,
-	M6809_CWAI,
-	M6809_SYNC,
-	M6809_ADD_CARRY,
-	M6809_SUB_CARRY,
-	M6809_ADD_DECIMAL,
-	M6809_NOP,
-	M6809_BLOCKAGE
+    M6809_SWI,
+    M6809_SWI2,
+    M6809_SWI3,
+    M6809_CWAI,
+    M6809_SYNC,
+    M6809_MUL,
+    M6809_ADD_CARRY,
+    M6809_SUB_CARRY,
+    M6809_ADD_DECIMAL,
+    M6809_NOP,
+    M6809_BLOCKAGE
 };
 

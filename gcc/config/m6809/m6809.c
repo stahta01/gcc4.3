@@ -37,10 +37,6 @@ You should have received a copy of the GNU General Public License
 along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
-#include <string.h>
-#include <time.h>
-#include <sys/types.h>
-#include <sys/timeb.h>
 #include "config.h"
 #include "system.h"
 #include "coretypes.h"
@@ -68,6 +64,9 @@ along with GCC; see the file COPYING3.  If not see
 #include "toplev.h"
 #include "optabs.h"
 #include "version.h"
+#include "df.h"
+#include "rtlhooks-def.h"
+#include "langhooks.h"
 
 /* macro to return TRUE if length of operand mode is one byte */
 #define BYTE_MODE(X) ((GET_MODE_SIZE (GET_MODE (X))) == 1)
@@ -80,7 +79,6 @@ register and not a fake one that is emulated in software. */
 /*-------------------------------------------------------------------
     Target hooks, moved from target.h
 -------------------------------------------------------------------*/
-static void m6809_encode_section_info PARAMS ((tree, int ));
 
 #undef TARGET_ENCODE_SECTION_INFO
 #define TARGET_ENCODE_SECTION_INFO m6809_encode_section_info
@@ -120,6 +118,9 @@ static void m6809_encode_section_info PARAMS ((tree, int ));
 #undef TARGET_FUNCTION_OK_FOR_SIBCALL
 #define TARGET_FUNCTION_OK_FOR_SIBCALL m6809_function_ok_for_sibcall
 
+#undef TARGET_ALLOCATE_STACK_SLOTS_FOR_ARGS
+#define TARGET_ALLOCATE_STACK_SLOTS_FOR_ARGS m6809_allocate_stack_slots_for_args
+
 /* External variables used */
 extern int reload_completed;   /* set in toplev.c */
 extern FILE *asm_out_file;
@@ -132,9 +133,9 @@ int section_changed = 0;
 
 /* Section names.  The defaults here are used until an
  * __attribute__((section)) is seen that changes it. */
-char code_section_op[128] = "\t.area .text";
-char data_section_op[128] = "\t.area .data";
-char bss_section_op[128] = "\t.area .bss";
+char code_section_op[128] = "\t.area\t.text";
+char data_section_op[128] = "\t.area\t.data";
+char bss_section_op[128] = "\t.area\t.bss";
 const char *code_bank_option = 0;
 
 /* TRUE if the direct mode prefix might be valid in this context.
@@ -160,7 +161,41 @@ static char default_code_bank_name[8] = "-1";
 unsigned int m6809_soft_regs = 0;
 
 /* ABI version */
-unsigned int m6809_abi_version = M6809_ABI_VERSION_REGS;
+unsigned int m6809_abi_version = M6809_ABI_VERSION_BX;
+
+
+/* Character class test functions */
+static inline int isdigit(int c)
+{
+	return c >= '0' && c <= '9';
+}
+static inline int isalpha(int c)
+{
+	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+}
+static inline int isalnum(int c)
+{
+	return isalpha(c) || isdigit(c);
+}
+
+
+/* Return the ABI string from version number */
+const char *m6809_abi_version_to_str(int version)
+{
+	const char *str = NULL;
+	switch(version)
+	{
+		case M6809_ABI_VERSION_STACK:
+			str = "stack";
+			break;
+		case M6809_ABI_VERSION_BX:
+			str = "bx";
+			break;
+		default:
+			abort();
+	}
+	return str;
+}
 
 
 /**
@@ -178,41 +213,53 @@ m6809_override_options (void)
 
 	/* Handle -mcode-section, -mdata-section, and -mbss-section */
 	if (code_section_ptr != 0)
-		sprintf (code_section_op, "\t.area %s", code_section_ptr);
+		sprintf (code_section_op, "\t.area\t%s", code_section_ptr);
 	if (data_section_ptr != 0)
-		sprintf (data_section_op, "\t.area %s", data_section_ptr);
+		sprintf (data_section_op, "\t.area\t%s", data_section_ptr);
 	if (bss_section_ptr != 0)
-		sprintf (bss_section_op, "\t.area %s", bss_section_ptr);
+		sprintf (bss_section_op, "\t.area\t%s", bss_section_ptr);
 
 	/* Handle -mcode-bank */
 	if (code_bank_option != 0)
 		sprintf (default_code_bank_name, "%s", code_bank_option);
 
-	/* Handle -mabi-version or -mno-reg-args */
+	/* Handle -mabi or -mno-reg-args */
 	if (m6809_abi_version_ptr != 0)
 	{
 		if (!strcmp (m6809_abi_version_ptr, "stack"))
 			m6809_abi_version = M6809_ABI_VERSION_STACK;
 		else if (!strcmp (m6809_abi_version_ptr, "regs"))
+		{
+			warning (WARNING_OPT "-mabi=regs deprecated; use -mabi=bx instead.");
 			m6809_abi_version = M6809_ABI_VERSION_REGS;
+		}
 		else if (!strcmp (m6809_abi_version_ptr, "bx"))
 			m6809_abi_version = M6809_ABI_VERSION_BX;
 		else if (!strcmp (m6809_abi_version_ptr, "latest"))
 			m6809_abi_version = M6809_ABI_VERSION_LATEST;
 		else
-			m6809_abi_version = atoi (m6809_abi_version_ptr);
+		{
+			if (!isdigit(*m6809_abi_version_ptr))
+				error ("ABI version not recognized `%s'", m6809_abi_version_ptr);
+			else
+				m6809_abi_version = atoi (m6809_abi_version_ptr);
+		}
+		if (m6809_abi_version > M6809_ABI_VERSION_LATEST)
+			m6809_abi_version = M6809_ABI_VERSION_LATEST;
 	}
 
-	/* The older -mno-reg-args option is deprecated, and treated
-	as -mabi=stack. */
+	/* The older -mno-reg-args option is deprecated,
+	   and treated as -mabi=stack. */
 	if (!TARGET_REG_ARGS)
-   {
-      warning (WARNING_OPT "-mno-reg-args deprecated; use -mabi=stack instead.");
-      m6809_abi_version = M6809_ABI_VERSION_STACK;
-   }
+	{
+		warning (WARNING_OPT "-mno-reg-args deprecated; use -mabi=stack instead.");
+		m6809_abi_version = M6809_ABI_VERSION_STACK;
+	}
 
+#if !CONFIG_SJLJ_EXCEPTIONS
 	/* -fexceptions is unsupported */
 	flag_exceptions = 0;
+#endif
 	flag_non_call_exceptions = 0;
 	flag_unwind_tables = 0;
 }
@@ -315,7 +362,8 @@ print_operand (FILE * file, rtx x, int code)
 			x = gen_rtx_CONST_INT (VOIDmode, ((INTVAL(x) >> 8) & 0xff));
 		}
 
-		putc ('#', file);
+		if (code != 'C')
+			putc ('#', file);
 		output_addr_const (file, x);
 	}
 }
@@ -323,12 +371,13 @@ print_operand (FILE * file, rtx x, int code)
 
 /** Prints an address operand to assembler from its RTL representation. */
 void
-print_operand_address (FILE *file, rtx addr)
+print_operand_address (FILE *file, rtx addr, rtx ofst)
 {
 	register rtx base = 0;
 	register rtx offset = 0;
 	int regno;
 	int indirect_flag = 0;
+	enum machine_mode mode;
 
 	check_direct_prefix_flag = 0;
 
@@ -343,23 +392,28 @@ print_operand_address (FILE *file, rtx addr)
 		}
 	}
 
-
 	switch (GET_CODE (addr)) {
 		case REG:
+			if (indirect_flag && ofst != NULL_RTX && INTVAL (ofst))
+				output_addr_const(file, ofst);
 			regno = REGNO (addr);
 			fprintf (file, ",%s", reg_names[regno]);
 			break;
 
 		case PRE_DEC:
+			/* We use BLKmode as a special flag to force decrement by two */
+			mode = GET_MODE (addr);
 			regno = REGNO (XEXP (addr, 0));
-			fputs (((last_mem_size == 1) ? ",-" : ",--"), file);
+			fputs (((mode != BLKmode && last_mem_size == 1) ? ",-" : ",--"), file);
 			fprintf (file, "%s", reg_names[regno]);
 			break;
 
 		case POST_INC:
+			/* We use BLKmode as a special flag to force increment by two */
+			mode = GET_MODE (addr);
 			regno = REGNO (XEXP (addr, 0));
 			fprintf (file, ",%s", reg_names[regno]);
-			fputs (((last_mem_size == 1) ? "+" : "++"), file);
+			fputs (((mode != BLKmode && last_mem_size == 1) ? "+" : "++"), file);
 			break;
 
 		case PLUS:
@@ -414,31 +468,31 @@ print_operand_address (FILE *file, rtx addr)
 
 			break;
 
-   default:
+	default:
 		/* Set this global before calling output_addr_const() */
 		if (!indirect_flag)
 			check_direct_prefix_flag = 1;
 
-		/* When printing a SYMBOL_REF in PIC mode, do not print the leading
-		 * '#' and follow it by ',pcr' to enable relative addressing. */
-		if (flag_pic && pic_ok_for_addr_p && GET_CODE (addr) == SYMBOL_REF)
-		{
-			ASM_OUTPUT_SYMBOL_REF (file, addr);
+		output_addr_const (file, addr);
+
+		/* When printing a SYMBOL_REF in PIC mode follow it
+		   by ',pcr' to enable relative addressing. */
+		if (flag_pic && pic_ok_for_addr_p && (
+			GET_CODE (addr) == SYMBOL_REF ||
+			(GET_CODE (addr) == CONST && GET_CODE (XEXP (addr, 0)) == PLUS && (
+				(GET_CODE (XEXP (XEXP (addr, 0), 0)) == SYMBOL_REF && GET_CODE (XEXP (XEXP (addr, 0), 1)) == CONST_INT) ||
+				(GET_CODE (XEXP (XEXP (addr, 0), 1)) == SYMBOL_REF && GET_CODE (XEXP (XEXP (addr, 0), 0)) == CONST_INT) ))
+			))
 			fputs (",pcr", file);
-			pic_ok_for_addr_p = 1;
-		}
-		else
-		{
-      	output_addr_const (file, addr);
-		}
 
 		check_direct_prefix_flag = 0;
-      break;
+		break;
 	}
 
 	if (indirect_flag)
 		fprintf (file, "]");
 }
+
 
 /*-------------------------------------------------------------------
     Update the CC Status
@@ -466,9 +520,10 @@ notice_update_cc (rtx exp, rtx insn ATTRIBUTE_UNUSED)
 		if (SET_DEST (exp) == pc_rtx)
 			return;
 
-		/* Moving one register into another register (tfr):
-		Doesn't alter the cc's.  */
-		if (REG_P (SET_DEST (exp)) && (REG_P (SET_SRC (exp))))
+		/* Moving one register into another register (TFR):
+		Doesn't alter the cc's, But moving to X or Y via LEAX/LEAY do alter the cc's. */
+		if (REG_P (SET_DEST (exp)) && (REG_P (SET_SRC (exp)))
+			&& (REGSET_CONTAINS_P (REGNO (SET_DEST (exp)), (A_REGBIT | B_REGBIT | DP_REGBIT | D_REGBIT | U_REGBIT | S_REGBIT | PC_REGBIT))))
 			return;
 
 		/* Moving memory into a register (load): Sets cc's. */
@@ -663,9 +718,9 @@ m6809_get_regs_size (unsigned int regs)
 		{
 			/* Add 1 or 2 byte, depending on the size of the register.
 			 * Since 'D' may be in both sets, check for WORD_REGSET first. */
-			if (REGSET_CONTAINS_P(regno, WORD_REGSET))
+			if (WORD_REGNO_P(regno))
 				size += 2;
-			else if (REGSET_CONTAINS_P(regno, BYTE_REGSET))
+			else if (BYTE_REGNO_P(regno))
 				size++;
 		}
 	}
@@ -736,7 +791,7 @@ m6809_current_function_is_void (void)
 
 /** Get the value of a declaration's 'bank', as set by the 'bank'
  * attribute.  If no bank was declared, it returns NULL by default. */
-const char *
+static const char *
 m6809_get_decl_bank (tree decl)
 {
 	tree attr;
@@ -778,18 +833,18 @@ m6809_declare_function_name (FILE *asm_out_file, const char *name, tree decl)
 		 * when the bank actually changes. */
 		if (strcmp (bank_name, current_bank_name))
 		{
-			fprintf (asm_out_file, "__self_bank\t.equ %s\n", bank_name);
+			fprintf (asm_out_file, "__self_bank\t.equ\t%s\n", bank_name);
 			strcpy (current_bank_name, bank_name);
 		}
 
 		/* Declare a global assembler value that denotes which bank the
 		 * named function is in. */
-		fprintf (asm_out_file, "__%s_bank\t.gblequ %s\n", name, bank_name);
+		fprintf (asm_out_file, "__%s_bank\t.gblequ\t%s\n", name, bank_name);
 
 		/* Force the current function into a new area */
-		fprintf (asm_out_file, "\t.bank bank_%s (FSFX=_%s)\n",
+		fprintf (asm_out_file, "\t.bank\tbank_%s (FSFX=_%s)\n",
 			bank_name, bank_name);
-		fprintf (asm_out_file, "\t.area bank_%s (BANK=bank_%s)\n",
+		fprintf (asm_out_file, "\t.area\tbank_%s (BANK=bank_%s)\n",
 			bank_name, bank_name);
 	}
 
@@ -832,6 +887,7 @@ pragma_parse (const char *name, tree *sect)
  * This is deprecated; code should use __attribute__(section("name"))
  * instead.
  */
+void pragma_section (cpp_reader *pfile);
 void pragma_section (cpp_reader *pfile ATTRIBUTE_UNUSED)
 {
 	tree sect;
@@ -894,7 +950,7 @@ void
 m6809_asm_named_section (
 	const char *name, 
 	unsigned int flags ATTRIBUTE_UNUSED,
-	unsigned int align ATTRIBUTE_UNUSED)
+	tree decl ATTRIBUTE_UNUSED)
 {
 	fprintf (asm_out_file, "\t.area\t%s\n", name);
 }
@@ -909,7 +965,7 @@ m6809_preferred_reload_class (rtx x, enum reg_class regclass)
 		case CONST_INT:
 		   /* Constants that can fit into 1 byte should be
 			 * loaded into a Q_REGS reg */
-			if (((unsigned) (INTVAL(x) + 0x80) < 0x100) &&
+			if ((INTVAL(x) >= -128 && INTVAL(x) <= 127) &&
   				 (regclass > A_REGS))
       		return Q_REGS;
 
@@ -921,7 +977,7 @@ m6809_preferred_reload_class (rtx x, enum reg_class regclass)
 			 * it's best to avoid using D register since it is
 			 * needed for other things.
 			 */
-			else if (((unsigned) (INTVAL(x) + 0x80) < 0x10000) &&
+			else if ((INTVAL(x) >= -32768 && INTVAL(x) <= 32767) &&
   				 (regclass > A_REGS))
       		return A_REGS;
 			break;
@@ -947,25 +1003,25 @@ m6809_preferred_reload_class (rtx x, enum reg_class regclass)
 
 /**
  * Check a new declaration for the "section" attribute.
- * If it exists, and the target section is "direct", then mark
+ * If it exists, and the target section is ".direct", then mark
  * the declaration (in RTL) to indicate special treatment.
  * When the variable is referenced later, we test for this flag
  * and can emit special asm text to force the assembler to use
  * short instructions.
  */
 static void
-m6809_encode_section_info (tree decl, int new_decl_p ATTRIBUTE_UNUSED)
+m6809_encode_section_info (tree decl, rtx rtl ATTRIBUTE_UNUSED, int first ATTRIBUTE_UNUSED)
 {
    tree attr, id;
    const char *name;
-   const char *decl_name;
+   /*const char *decl_name;*/
 
    /* We only care about variable declarations, not functions */
    if (TREE_CODE (decl) != VAR_DECL)
       return;
 
 	/* For debugging purposes only; grab the decl's name */
-   decl_name = IDENTIFIER_POINTER (DECL_NAME (decl));
+   /*decl_name = IDENTIFIER_POINTER (DECL_NAME (decl));*/
 
 	/* Give up if the decl doesn't have any RTL */
    if (!DECL_RTL (decl))
@@ -985,7 +1041,7 @@ m6809_encode_section_info (tree decl, int new_decl_p ATTRIBUTE_UNUSED)
       return;
 
 	/* See if the value is 'direct'.  If so, mark it. */
-   if (!strcmp (name, "direct"))
+   if (!strcmp (name, ".direct"))
       SYMBOL_REF_FLAG (XEXP (DECL_RTL (decl), 0)) = 1;
 }
 
@@ -1186,7 +1242,8 @@ emit_libcall_insns (enum machine_mode mode,
  * LONG_P is nonzero if we are emitting a long branch, and need to
  * prepend an 'l' to the opcode name.
  */
-void output_branch_insn1 (const char *opcode, rtx *operands, int long_p)
+static void
+output_branch_insn1 (const char *opcode, rtx *operands, int long_p)
 {
 	char pattern[64];
 	sprintf (pattern, "%s%s\t%%l0", long_p ? "l" : "", opcode);
@@ -1218,13 +1275,15 @@ output_branch_insn (enum rtx_code code, rtx *operands, int length)
 	 */
 	switch (code)
 	{
-		case LABEL_REF: 
-			if (shortform)
+		case LABEL_REF:
+			/* Let the assembler try to optimize long to short branch. */
+			output_branch_insn1 ("bra", operands, !shortform);
+			/*if (shortform)
 				output_branch_insn1 ("bra", operands, 0);
 			else if (flag_pic)
 				output_branch_insn1 ("bra", operands, 1);
 			else
-				output_branch_insn1 ("jmp", operands, 0);
+				output_branch_insn1 ("jmp", operands, 0);*/
 			break;
 		case EQ:
 			output_branch_insn1 ("beq", operands, !shortform);
@@ -1302,10 +1361,10 @@ output_branch_insn (enum rtx_code code, rtx *operands, int length)
  */
 static bool
 m6809_rtx_costs (rtx X, int code, int outer_code ATTRIBUTE_UNUSED,
-	int *total, bool speed)
+	int *total)
 {
 	int has_const_arg = 0;
-	HOST_WIDE_INT const_arg;
+	HOST_WIDE_INT const_arg = 0;
 	enum machine_mode mode;
 	int nargs = 1;
 	rtx op0, op1;
@@ -1602,7 +1661,7 @@ static int m6809_address_cost (rtx addr)
 
 static tree
 m6809_handle_fntype_attribute (tree *node, tree name,
-	tree args ATTRIBUTE_UNUSED,
+	tree args,
 	int flags ATTRIBUTE_UNUSED,
 	bool *no_add_attrs)
 {
@@ -1611,6 +1670,28 @@ m6809_handle_fntype_attribute (tree *node, tree name,
 		warning (WARNING_OPT "'%s' only valid for functions", 
 			IDENTIFIER_POINTER (name));
 		*no_add_attrs = TRUE;
+	}
+
+	if (!strcmp (IDENTIFIER_POINTER (name), "interrupt"))
+	{
+		if (args != NULL_TREE)
+		{
+			tree value = TREE_VALUE (args);
+			if (TREE_CODE (value) != STRING_CST)
+			{
+				warning (OPT_Wattributes,
+					"argument of %qs attribute is not a string constant",
+					IDENTIFIER_POINTER (name));
+				*no_add_attrs = TRUE;
+			}
+			else if (strcmp (TREE_STRING_POINTER (value), "firq"))
+			{
+				warning (OPT_Wattributes,
+					"argument of %qs attribute is not \"firq\"",
+					IDENTIFIER_POINTER (name));
+				*no_add_attrs = TRUE;
+			}
+		}
 	}
 
 	return NULL_TREE;
@@ -1643,7 +1724,7 @@ m6809_handle_default_attribute (tree *node ATTRIBUTE_UNUSED,
 /* Table of valid machine attributes */
 const struct attribute_spec m6809_attribute_table[] = { /*
 { name,        min, max, decl,  type, fntype, handler } */
-{ "interrupt", 0,   0,   false, true,  true,  m6809_handle_fntype_attribute },
+{ "interrupt", 0,   1,   false, true,  true,  m6809_handle_fntype_attribute },
 { "naked",     0,   0,   false, true,  true,  m6809_handle_fntype_attribute },
 { "far",       0,   1,   false, true,  true,  m6809_handle_fntype_attribute },
 { "bank",      0,   1,   true,  false, false, m6809_handle_default_attribute },
@@ -1661,8 +1742,9 @@ m6809_init_builtins (void)
 	 * void_ftype_void = void f(void)
 	 * void_ftype_uchar = void f(unsigned char)
 	 * uchar_ftype_uchar2 = unsigned char f (unsigned char, unsigned char)
+	 * uint_ftype_uchar2 = unsigned int f (unsigned char, unsigned char)
 	 */
-	tree void_ftype_void = 
+	tree void_ftype_void =
 		build_function_type (void_type_node, void_list_node);
 
 	tree void_ftype_uchar =
@@ -1671,7 +1753,12 @@ m6809_init_builtins (void)
 
 	tree uchar_ftype_uchar2 =
 		build_function_type (unsigned_char_type_node,
-			tree_cons (NULL_TREE, unsigned_char_type_node, 
+			tree_cons (NULL_TREE, unsigned_char_type_node,
+				tree_cons (NULL_TREE, unsigned_char_type_node, void_list_node)));
+
+	tree uint_ftype_uchar2 =
+		build_function_type (unsigned_type_node,
+			tree_cons (NULL_TREE, unsigned_char_type_node,
 				tree_cons (NULL_TREE, unsigned_char_type_node, void_list_node)));
 
 	/* Register each builtin function. */
@@ -1689,6 +1776,9 @@ m6809_init_builtins (void)
 
 	add_builtin_function ("__builtin_sync", void_ftype_void,
 		M6809_SYNC, BUILT_IN_MD, NULL, NULL_TREE);
+
+	add_builtin_function ("__builtin_mul", uint_ftype_uchar2,
+		M6809_MUL, BUILT_IN_MD, NULL, NULL_TREE);
 
 	add_builtin_function ("__builtin_nop", void_ftype_void,
 		M6809_NOP, BUILT_IN_MD, NULL, NULL_TREE);
@@ -1715,7 +1805,7 @@ m6809_init_builtins (void)
  *
  * This rtx is suitable for use in the emitted RTL for the
  * builtin instruction. */
-rtx
+static rtx
 m6809_builtin_operand (tree arglist, enum machine_mode mode, int opnum)
 {
 	tree arg;
@@ -1771,6 +1861,14 @@ m6809_expand_builtin (tree exp,
 			emit_insn (target = gen_m6809_sync ());
 			return target;
 
+		case M6809_MUL:
+			r0 = m6809_builtin_operand (arglist, QImode, 0);
+			r1 = m6809_builtin_operand (arglist, QImode, 1);
+			if (!target)
+				target = gen_reg_rtx (HImode);
+			emit_insn (gen_m6809_mul (target, r0, r1));
+			return target;
+
 		case M6809_ADD_CARRY:
 			r0 = m6809_builtin_operand (arglist, QImode, 0);
 			r1 = m6809_builtin_operand (arglist, QImode, 1);
@@ -1810,22 +1908,7 @@ m6809_expand_builtin (tree exp,
 }
 
 
-
-/* Returns nonzero if 'x' represents a function that was declared
- * as __noreturn__. */
-int
-noreturn_functionp (rtx x)
-{
-	tree decl = call_target_decl (x);
-
-	if (decl == NULL_TREE)
-		return 0;
-	else
-		return TREE_THIS_VOLATILE (decl);
-}
-
-
-const char *
+static const char *
 far_function_type_p (tree type)
 {
 	tree attr;
@@ -1880,7 +1963,6 @@ far_functionp (rtx x)
 }
 
 
-
 /** Outputs the assembly language for a far call. */
 void
 output_far_call_insn (rtx *operands, int has_return)
@@ -1888,63 +1970,76 @@ output_far_call_insn (rtx *operands, int has_return)
 	static char page_data[64];
 	const char *called_page;
 
-  /* The logic is the same for functions whether or not there
-	* is a return value.  Skip over the return value in this
-	* case, so that the call location is always operands[0].  */
-  if (has_return)
-	  operands++;
+	/* The logic is the same for functions whether or not there
+	 * is a return value.  Skip over the return value in this
+	 * case, so that the call location is always operands[0].  */
+	if (has_return)
+		operands++;
 
-  /* Get the name of the page being called */
-  called_page = far_functionp (operands[0]);
+	/* Get the name of the page being called */
+	called_page = far_functionp (operands[0]);
 
 #if 0 /* TODO : broken logic */
-  /* See if the called page name is a 'bank' */
-  if (isdigit (*called_page))
-  {
-    /* New style banking */
-	 if (!strcmp (called_page, current_bank_name))
-	 {
-	 	/* Same page */
-  	  	output_asm_insn ("jsr\t%0", operands);
-	 }
-	 else
-	 {
-	 	/* Different page */
-		output_asm_insn ("jsr\t__far_call_handler\t;new style", operands);
-  	  	output_asm_insn ("\t.dw\t%0", operands);
-		sprintf (page_data, "\t.db\t%s", called_page);
-	 	output_asm_insn (page_data, operands);
-	 }
-	 return;
-  }
+	/* See if the called page name is a 'bank' */
+	if (isdigit (*called_page))
+	{
+		/* New style banking */
+		if (!strcmp (called_page, current_bank_name))
+		{
+			/* Same page */
+			output_asm_insn ("jsr\t%0", operands);
+		}
+		else
+		{
+			/* Different page */
+			output_asm_insn ("jsr\t__far_call_handler\t;new style", operands);
+			output_asm_insn ("\t.word\t%0", operands);
+			sprintf (page_data, "\t.byte\t%s", called_page);
+			output_asm_insn (page_data, operands);
+		}
+		return;
+	}
 #endif
 
-  /* Are we calling a different page than we are running in? */
-  if (!strcmp (called_page, far_code_page))
-  {
-    /* Same page : no need to execute a far call */
+	/* Are we calling a different page than we are running in? */
+	if (!strcmp (called_page, far_code_page))
+	{
+		/* Same page : no need to execute a far call */
 		if (flag_pic)
 			output_asm_insn ("lbsr\t%C0", operands);
 		else
 			output_asm_insn ("jsr\t%0", operands);
-  }
-  else
-  {
-    /* Different page : need to emit far call thunk */
+	}
+	else
+	{
+		/* Different page : need to emit far call thunk */
 
-    /* First output a call to the thunk for making far calls. */
+		/* First output a call to the thunk for making far calls. */
 		if (flag_pic)
 			output_asm_insn ("lbsr\t__far_call_handler", operands);
 		else
 			output_asm_insn ("jsr\t__far_call_handler", operands);
-  
-    /* Now output the name of the call site */
-    output_asm_insn ("\t.dw\t%C0", operands);
-  
-    /* Finally output the page number */
-    sprintf (page_data, "\t.db\t%s", far_functionp (operands[0]));
-    output_asm_insn (page_data, operands);
-  }
+
+		/* Now output the name of the call site */
+		output_asm_insn (".word\t%C0", operands);
+
+		/* Finally output the page number */
+		snprintf (page_data, sizeof(page_data), ".byte\t%s", far_functionp (operands[0]));
+		output_asm_insn (page_data, operands);
+	}
+}
+
+
+/** Outputs the assembly language for a call. */
+void
+output_call_insn (rtx *operands)
+{
+	/* First output the JSR instruction */
+	fputs ("\tjsr\t", asm_out_file);
+
+	/* Finally output the operand and a new line */
+	print_operand_address (asm_out_file, XEXP (operands[0], 0), operands[1]);
+	putc ('\n', asm_out_file);
 }
 
 
@@ -1973,6 +2068,10 @@ m6809_init_cumulative_args (CUMULATIVE_ARGS cum ATTRIBUTE_UNUSED,
 		cum |= (CUM_X_MASK | CUM_B_MASK | CUM_STACK_ONLY);
 	}
 
+	/* libcall use registers if possible */
+	if (libname != NULL)
+		return cum;
+
 	if (m6809_abi_version == M6809_ABI_VERSION_STACK)
 	{
 		/* cannot use registers ; only use the stack */
@@ -1998,8 +2097,8 @@ m6809_function_arg_on_stack (CUMULATIVE_ARGS *cump)
 /*
  * Trampoline output:
  *
- * ldu #&cxt      4 bytes   --LDY- ?? ??
- * jmp fnaddr     3 bytes   JMP ?? ??
+ *  ldy #&cxt      4 bytes
+ *  jmp fnaddr     3 bytes
  */
 void
 m6809_initialize_trampoline (rtx tramp, rtx fnaddr ATTRIBUTE_UNUSED, rtx cxt)
@@ -2020,17 +2119,20 @@ m6809_asm_file_start (void)
 {
 	const char *module_name;
 
-	fprintf (asm_out_file, "\n;;; gcc for m6809 : %s %s\n",
+	fprintf (asm_out_file, ";;; gcc for m6809 : %s %s\n",
 		__DATE__, __TIME__);
 	fprintf (asm_out_file, ";;; %s\n", version_string);
-
 	fprintf (asm_out_file, ";;; ABI version %d\n", m6809_abi_version);
-	fprintf (asm_out_file, ";;; %s\n",
-		(TARGET_BYTE_INT ? "-mint8" : "-mint16"));
-	if (TARGET_WPC)
-		fprintf (asm_out_file, ";;; -mwpc\n");
-	if (TARGET_6309)
-		fprintf (asm_out_file, ";;; -m6309\n");
+	fprintf (asm_out_file,
+		optimize_size ? ";;; -mabi=%s %s%s%s%s%s -f%somit-frame-pointer -Os\n" : ";;; -mabi=%s %s%s%s%s%s -f%somit-frame-pointer -O%d\n",
+		m6809_abi_version_to_str(m6809_abi_version),
+		TARGET_BYTE_INT ? "-mint8" : "-mint16",
+		TARGET_WPC ? " -mwpc" : "",
+		TARGET_6309 ? " -m6309" : "",
+		TARGET_DRET ? " -mdret" : "",
+		flag_pic ? " -fpic" : "",
+		flag_omit_frame_pointer ? "" : "no-",
+		optimize);
 
 	/* Print the name of the module, which is taken as the base name
 	 * of the input file.
@@ -2064,6 +2166,14 @@ m6809_asm_file_start (void)
 }
 
 
+/* Naked functions should not allocate stack slots for arguments. */
+bool
+m6809_allocate_stack_slots_for_args (void)
+{
+	return !m6809_current_function_has_type_attr_p ("naked");
+}
+
+
 /** Returns true if prologue/epilogue code is required for the
  * current function being compiled.
  *
@@ -2087,11 +2197,37 @@ emit_prologue_insns (void)
   unsigned int frame_size = get_frame_size ();
 
   /* Save all registers used, including the frame pointer */
-  if (live_regs && !m6809_current_function_has_type_attr_p ("interrupt"))
+  tree type = TREE_TYPE (current_function_decl);
+  tree attr = lookup_attribute ("interrupt", TYPE_ATTRIBUTES (type));
+  if (attr == NULL_TREE)
   {
-    insn = emit_insn (
-      gen_rtx_register_pushpop (UNSPEC_PUSH_RS, live_regs));
-    RTX_FRAME_RELATED_P (insn) = 1;
+    if (live_regs)
+    {
+      insn = emit_insn (
+        gen_rtx_register_pushpop (UNSPEC_PUSH_RS, live_regs));
+      RTX_FRAME_RELATED_P (insn) = 1;
+    }
+  }
+  else
+  {
+    /* Make sure it has a value assigned to it */
+    attr = TREE_VALUE (attr);
+    if (attr != NULL_TREE)
+    {
+      /* Return the interrupt name */
+      attr = TREE_VALUE (attr);
+      if (!strcmp (TREE_STRING_POINTER (attr), "firq"))
+      {
+        /* TODO save D and X only if they have changed or a
+           function has been called */
+        live_regs |= (1 << HARD_D_REGNUM) | (1 << HARD_X_REGNUM);
+        insn = emit_insn (
+          gen_rtx_register_pushpop (UNSPEC_PUSH_RS, live_regs));
+        RTX_FRAME_RELATED_P (insn) = 1;
+      }
+      else
+        gcc_unreachable ();
+    }
   }
 
   /* Allocate space for local variables */
@@ -2127,14 +2263,35 @@ emit_epilogue_insns (bool sibcall_p)
   }
   else
   {
-    if (live_regs && !m6809_current_function_has_type_attr_p ("interrupt"))
+    tree type = TREE_TYPE (current_function_decl);
+    tree attr = lookup_attribute ("interrupt", TYPE_ATTRIBUTES (type));
+    if (attr == NULL_TREE)
+    {
+      if (live_regs)
         emit_insn (
           gen_rtx_register_pushpop (UNSPEC_POP_RS, PC_REGBIT | live_regs));
-  
-    if (m6809_current_function_has_type_attr_p ("interrupt"))
-      emit_jump_insn (gen_return_rti ());
-    else
+
       emit_jump_insn (gen_return_rts ());
+    }
+    else
+    {
+      /* Make sure it has a value assigned to it */
+      attr = TREE_VALUE (attr);
+      if (attr != NULL_TREE)
+      {
+        /* Return the interrupt name */
+        attr = TREE_VALUE (attr);
+        if (!strcmp (TREE_STRING_POINTER (attr), "firq"))
+        {
+          live_regs |= (1 << HARD_D_REGNUM) | (1 << HARD_X_REGNUM);
+          emit_insn (gen_rtx_register_pushpop (UNSPEC_POP_RS, live_regs));
+        }
+        else
+          gcc_unreachable ();
+      }
+
+      emit_jump_insn (gen_return_rti ());
+    }
   }
 }
 
@@ -2144,16 +2301,18 @@ emit_epilogue_insns (bool sibcall_p)
 void
 m6809_cpu_cpp_builtins (void)
 {
+	extern void builtin_define_std (const char *macro); /* c-cppbuiltin.c */
+
+	/* Always defined */
+	builtin_define_std ("__M6809__");
+	builtin_define_std ("__m6809__");
+
 	if (TARGET_6309)
 	{
 		builtin_define_std ("__M6309__");
 		builtin_define_std ("__m6309__");
 	}
-	else
-	{
-		builtin_define_std ("__M6809__");
-		builtin_define_std ("__m6809__");
-	}
+
 
 	if (TARGET_BYTE_INT)
 		builtin_define_std ("__int8__");
@@ -2163,13 +2322,11 @@ m6809_cpu_cpp_builtins (void)
 	switch (m6809_abi_version)
 	{
 		case M6809_ABI_VERSION_STACK:
-			builtin_define_std ("__regargs__");
+			builtin_define_std ("__regargs__"); /* deprecated */
 			builtin_define_std ("__ABI_STACK__");
 			break;
-		case M6809_ABI_VERSION_REGS:
-			builtin_define_std ("__ABI_REGS__");
-			break;
 		case M6809_ABI_VERSION_BX:
+			builtin_define_std ("__ABI_REGS__"); /* deprecated */
 			builtin_define_std ("__ABI_BX__");
 			break;
 		default:
@@ -2181,6 +2338,16 @@ m6809_cpu_cpp_builtins (void)
 
 	if (TARGET_DRET)
 		builtin_define_std ("__DRET__");
+
+	if (flag_omit_frame_pointer)
+		builtin_define_std ("__OMIT_FRAME_POINTER__");
+
+	/* byte order macro */
+	builtin_define_std ("__ORDER_LITTLE_ENDIAN__=1234");
+	builtin_define_std ("__ORDER_PDP_ENDIAN__=3412");
+	builtin_define_std ("__ORDER_BIG_ENDIAN__=4321");
+	builtin_define_std ("__BYTE_ORDER__=__ORDER_BIG_ENDIAN__");
+	builtin_define_std ("__FLOAT_WORD_ORDER__=__ORDER_BIG_ENDIAN__");
 }
 
 
@@ -2207,7 +2374,7 @@ m6809_output_ascii (FILE *fp, const char *str, unsigned long size)
 	/* Check for 8-bit codes, which cannot be embedded in an .ascii */
 	for (i = 0; i < size; i++)
 	{
-		int c = str[i] & 0377;
+		int c = str[i] & 0xFF;
 		if (c >= 0x80)
 		{
 			use_ascii = false;
@@ -2216,53 +2383,62 @@ m6809_output_ascii (FILE *fp, const char *str, unsigned long size)
 	}
 
 	if (use_ascii)
-		fprintf (fp, "\t.ascii \"");
-
-	for (i = 0; i < size; i++)
 	{
-		int c = str[i] & 0377;
-
-		if (use_ascii)
+		fputs ("\t.ascii\t\"", fp);
+		for (i = 0; i < size; i++)
 		{
-		/* Just output the plain character if it is printable,
-		otherwise output the escape code for the character.
-		The assembler recognizes the same C-style octal escape sequences,
-		except that it only supports 7-bit codes. */
-		if (c >= ' ' && c < 0177 && c != '\\' && c != '"')
-  			putc (c, fp);
-		else switch (c) 
-		{
-			case '\n':
+			int c = str[i] & 0xFF;
+			/* Just output the plain character if it is printable,
+			otherwise output the escape code for the character.
+			The assembler recognizes the same C-style octal escape sequences,
+			except that it only supports 7-bit codes. */
+			if (c >= ' ' && c < 0x7F && c != '\\' && c != '"')
+				putc (c, fp);
+			else switch (c)
+			{
+				case '\n':
 #ifndef TARGET_COCO
-				fputs ("\\n", fp);
-				break;
+					fputs ("\\n", fp);
+					break;
 #endif
 				/* On the CoCo, we fallthrough and treat '\n' like '\r'. */
-			case '\r':
-				fputs ("\\r", fp);
-				break;
-			case '\t':
-				fputs ("\\t", fp);
-				break;
-			case '\f':
-				fputs ("\\f", fp);
-				break;
-			case 0:
-				fputs ("\\0", fp);
-				break;
-			default:
-				fprintf (fp, "\\%03o", c);
-				break;
+				case '\r':
+					fputs ("\\r", fp);
+					break;
+				case '\t':
+					fputs ("\\t", fp);
+					break;
+				case '\f':
+					fputs ("\\f", fp);
+					break;
+				case 0:
+					fputs ("\\0", fp);
+					break;
+				default:
+					fprintf (fp, "\\%03o", c);
+					break;
+			}
 		}
-		}
-		else
-		{
-			fprintf (fp, "\t.byte\t0x%02X\n", c);
-		}
+		fputs ("\"\n", fp);
 	}
-
-	if (use_ascii)
-		fprintf (fp, "\"\n");
+	else
+	{
+		for (i = 0; i < size; i++)
+		{
+			int c = str[i];
+			/* Try to output 8 bytes by line. */
+			if (!(i&7))
+			{
+				if (i)
+					putc ('\n', fp);
+				fputs ("\t.byte\t", fp);
+			}
+			else
+				putc (',', fp);
+			fprintf (fp, "%d", c);
+		}
+		putc ('\n', fp);
+	}
 }
 
 
@@ -2306,42 +2482,47 @@ m6809_output_quoted_string (FILE *asm_file, const char *string)
 void
 m6809_output_shift_insn (int rtx_code, rtx *operands)
 {
-	struct shift_opcode *op;
-
 	if (GET_CODE (operands[2]) == CONST_INT)
 		abort ();
 
-	if (optimize_size && GET_MODE (operands[0]) == HImode)
+	if (GET_MODE (operands[0]) == HImode)
 	{
-		switch (rtx_code)
+		if (optimize_size)
 		{
-			case ASHIFT:
-				output_asm_insn ("jsr\t_ashlhi3", operands);
-				break;
-			case ASHIFTRT:
-				output_asm_insn ("jsr\t_ashrhi3", operands);
-				break;
-			case LSHIFTRT:
-				output_asm_insn ("jsr\t_lshrhi3", operands);
-				break;
+			switch (rtx_code)
+			{
+				case ASHIFT:
+					output_asm_insn (flag_pic ? "lbsr\t_ashlhi3" : "jsr\t_ashlhi3", operands);
+					break;
+				case ASHIFTRT:
+					output_asm_insn (flag_pic ? "lbsr\t_ashrhi3" : "jsr\t_ashrhi3", operands);
+					break;
+				case LSHIFTRT:
+					output_asm_insn (flag_pic ? "lbsr\t_lshrhi3" : "jsr\t_lshrhi3", operands);
+					break;
+				default:
+					abort ();
+				}
+		}
+		else
+		{
+			switch (rtx_code)
+			{
+				case ASHIFT:
+					m6809_gen_register_shift (operands, "aslb", "rola");
+					break;
+				case ASHIFTRT:
+					m6809_gen_register_shift (operands, "asra", "rorb");
+					break;
+				case LSHIFTRT:
+					m6809_gen_register_shift (operands, "lsra", "rorb");
+					break;
+				default:
+					abort ();
+			}
 		}
 	}
-	else if (GET_MODE (operands[0]) == HImode)
-	{
-		switch (rtx_code)
-		{
-			case ASHIFT:
-				m6809_gen_register_shift (operands, "aslb", "rola");
-				break;
-			case ASHIFTRT:
-				m6809_gen_register_shift (operands, "asra", "rorb");
-				break;
-			case LSHIFTRT:
-				m6809_gen_register_shift (operands, "lsra", "rorb");
-				break;
-		}
-	}
-	else
+	else if (GET_MODE (operands[0]) == QImode)
 	{
 		switch (rtx_code)
 		{
@@ -2354,12 +2535,16 @@ m6809_output_shift_insn (int rtx_code, rtx *operands)
 			case LSHIFTRT:
 				m6809_gen_register_shift (operands, "lsrb", NULL);
 				break;
+			default:
+				abort ();
 		}
 	}
+	else
+		abort ();
 }
 
 
-void
+static void
 m6809_emit_move_insn (rtx dst, rtx src)
 {
 	emit_insn (gen_rtx_SET (VOIDmode, dst, src));
@@ -2661,35 +2846,35 @@ m6809_hard_regno_mode_ok (unsigned int regno, enum machine_mode mode)
    }
 
    /* VOIDmode can be stored anywhere */
-   else if (mode == VOIDmode)
+   if (mode == VOIDmode)
       return 1;
 
    /* Zero is a reserved register, but problems occur if we don't
    say yes here??? */
-   else if (regno == 0)
+   if (regno == HARD_RSVD1_REGNUM)
       return 1;
 
    /* For other registers, return true only if the requested size
    exactly matches the hardware size. */
-   else if ((G_REGNO_P (regno)) && (GET_MODE_SIZE (mode) == 2))
+   if ((WORD_REGNO_P (regno)) && (GET_MODE_SIZE (mode) == 2))
       return 1;
-   else if ((BYTE_REGNO_P (regno)) && (GET_MODE_SIZE (mode) == 1))
+   if ((BYTE_REGNO_P (regno)) && (GET_MODE_SIZE (mode) == 1))
       return 1;
-   else
-      return 0;
+
+   return 0;
 }
 
 
 /* exp is the call expression.  DECL is the called function,
  * or NULL for an indirect call */
-bool
+static bool
 m6809_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
 {
-	tree type, arg;
-   const char *name;
+	tree type;
 	bool result = 0;
-	int argcount = 0;
-	int step = 1;
+	/*int step = 1;
+	const char *name;
+	int argcount = 0;*/
 
 	/* If there is no DECL, it is an indirect call.
 	 * Never optimize this??? */
@@ -2697,25 +2882,26 @@ m6809_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
 		goto done;
 
 	/* Never allow an interrupt handler to be optimized this way. */
-	if (m6809_function_has_type_attr_p (decl, "interrupt"))
+	if (m6809_function_has_type_attr_p (current_function_decl, "interrupt")
+		|| m6809_function_has_type_attr_p (decl, "interrupt"))
 		goto done;
 
 	/* Skip sibcall if the type can't be found for
 	 * some reason */
-	step++;
-	name = IDENTIFIER_POINTER (DECL_NAME (decl));
+	/*step++;*/
+	/*name = IDENTIFIER_POINTER (DECL_NAME (decl));*/
 	type = TREE_TYPE (decl);
 	if (type == NULL)
 		goto done;
 
 	/* Skip sibcall if the target is a far function */
-	step++;
+	/*step++;*/
 	if (far_function_type_p (type) != NULL)
 		goto done;
 
 	/* Skip sibcall if the called function's arguments are
 	 * variable */
-	step++;
+	/*step++;*/
 	if (TYPE_ARG_TYPES (type) == NULL)
 		goto done;
 
@@ -2994,6 +3180,8 @@ m6809_can_eliminate (int from, int to)
 int
 m6809_initial_elimination_offset (int from, int to)
 {
+	if (to != STACK_POINTER_REGNUM && to != HARD_FRAME_POINTER_REGNUM)
+		gcc_unreachable ();
 	switch (from)
 	{
 		case ARG_POINTER_REGNUM:

@@ -66,3 +66,7 @@ $(T)crt0.o: $(CRT0_S) $(GCC_PASSES)
 
 $(T)mcrt0.o: $(MCRT0_S) $(GCC_PASSES)
 	$(GCC_FOR_TARGET) $(CRT0STUFF_T_CFLAGS) $(MULTILIB_CFLAGS) -c -o $(T)mcrt0.o -x assembler-with-cpp $(MCRT0_S)
+
+# Use the sjlj unwind.
+LIB2ADDEH = $(srcdir)/unwind-sjlj.c $(srcdir)/unwind-c.c
+LIB2ADDEHDEP = unwind.inc
