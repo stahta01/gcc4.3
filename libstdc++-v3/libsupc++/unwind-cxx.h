@@ -173,7 +173,7 @@ __get_exception_header_from_ue (_Unwind_Exception *exc)
   return reinterpret_cast<__cxa_exception *>(exc + 1) - 1;
 }
 
-#ifdef __ARM_EABI_UNWINDER__
+#if defined(__ARM_EABI_UNWINDER__) || !defined(__UINT64_TYPE__)
 static inline bool
 __is_gxx_exception_class(_Unwind_Exception_Class c)
 {
@@ -200,13 +200,17 @@ __GXX_INIT_EXCEPTION_CLASS(_Unwind_Exception_Class c)
   c[6] = '+';
   c[7] = '\0';
 }
+#endif // defined(__ARM_EABI_UNWINDER__) || !defined(__UINT64_TYPE__)
 
+#ifdef __ARM_EABI_UNWINDER__
 static inline void*
 __gxx_caught_object(_Unwind_Exception* eo)
 {
   return (void*)eo->barrier_cache.bitpattern[0];
 }
-#else // !__ARM_EABI_UNWINDER__
+#endif // __ARM_EABI_UNWINDER__
+
+#if !(defined(__ARM_EABI_UNWINDER__) || !defined(__UINT64_TYPE__))
 // This is the exception class we report -- "GNUCC++\0".
 const _Unwind_Exception_Class __gxx_exception_class
 = ((((((((_Unwind_Exception_Class) 'G' 
@@ -225,7 +229,9 @@ __is_gxx_exception_class(_Unwind_Exception_Class c)
 }
 
 #define __GXX_INIT_EXCEPTION_CLASS(c) c = __gxx_exception_class
+#endif // !(defined(__ARM_EABI_UNWINDER__) || !defined(__UINT64_TYPE__))
 
+#ifndef __ARM_EABI_UNWINDER__
 // GNU C++ personality routine, Version 0.
 extern "C" _Unwind_Reason_Code __gxx_personality_v0
      (int, _Unwind_Action, _Unwind_Exception_Class,
