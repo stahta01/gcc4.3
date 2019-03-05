@@ -1,0 +1,10 @@
+gcc6809 credits go to
+
+David Flamand     m6809.md  m6809.c libgcc1.S crt0.S  https://gitlab.com/dfffffff/gcc6809
+Brian Dominy      m6809.md  m6809.c libgcc1.S         https://github.com/bcd/gcc
+Tom Jones         m6809.md  m6809.c
+Matthias Doerfel  m6809.md  m6809.c
+Eric Botcazou               m6809.c
+Keith A. Bare II            m6809.c
+
+Most of the above likely contributed to parts other than what is listed.
