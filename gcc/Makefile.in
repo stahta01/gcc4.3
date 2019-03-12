@@ -377,7 +377,7 @@ PARTITION_H = $(srcdir)/../include/partition.h
 MD5_H	    = $(srcdir)/../include/md5.h
 
 # Default native SYSTEM_HEADER_DIR, to be overridden by targets.
-NATIVE_SYSTEM_HEADER_DIR = /usr/include
+NATIVE_SYSTEM_HEADER_DIR = /include
 # Default cross SYSTEM_HEADER_DIR, to be overridden by targets.
 CROSS_SYSTEM_HEADER_DIR = @CROSS_SYSTEM_HEADER_DIR@
 
